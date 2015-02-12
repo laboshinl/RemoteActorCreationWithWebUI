@@ -11,8 +11,9 @@ libraryDependencies ++= {
   Seq(
     "org.scalatest" % "scalatest_2.11" % testVersion % "test",
     "io.spray" %% "spray-can" % sprayVersion,
+    "io.spray" %% "spray-routing" % sprayVersion,
     "com.typesafe.akka" % "akka-actor_2.11" % akkaVersion,
     "com.typesafe.akka" % "akka-remote_2.11" % akkaVersion,
-    "org.scala-lang.modules" %% "scala-xml" % "1.0.2"
+    "org.json4s" %% "json4s-native" % "3.2.11"
   )
 }
