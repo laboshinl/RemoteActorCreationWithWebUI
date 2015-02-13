@@ -8,9 +8,9 @@ class RemoteConnection extends Actor with MyBeautifulOutput{
   var waiter : ActorRef = null
 
   override def receive: Receive = {
-    case CreateAnotherActor => {waiter = sender; remote ! CreateAnotherActor}
-    case ActorCreated(adr) =>  adr ! "OK?"
-    case Gotcha => {out("started"); waiter ! ActorCreated(sender)}
-    case StopSystem =>  remote ! StopSystem
+    case ActorTypeToJson(t) => {out("Got request on creation"); waiter = sender; remote ! CreateNewActor(t)}
+    case ActorCreated(adr) =>  {out("Checking address"); adr ! CheckAddress}
+    case AddressIsOk =>        {out("Adress is ok"); waiter ! ActorCreated(sender)}
+    case StopSystem =>         {out("Stopping remote system"); remote ! StopSystem}
   }
 }

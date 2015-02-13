@@ -1,5 +1,5 @@
 /**
- * Created by mentall on 12.02.15.
+ * Created by mentall on 13.02.15.
  */
 trait MyBeautifulOutput{
   val maxLength = 46

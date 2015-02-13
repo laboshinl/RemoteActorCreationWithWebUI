@@ -2,15 +2,11 @@ mentall@acer-laptop:~$ curl -X PUT -H "Content-Type: application/json" -d '{"t":
 ActorRef:Actor[akka://LocalSystem/user/WebUI/$a/$a#-1720973719]
 ActorPath:akka://LocalSystem/user/WebUI/$a/$a
 mentall@acer-laptop:~$ 
-mentall@acer-laptop:~$ curl -X POST -H "Content-Type: application/json" -d '{"path":"akka://LocalSystem/user/WebUI/$a/$a#-1720973719", "msg":"Hello"}' localhost:8080/actor
+mentall@acer-laptop:~$ curl -X POST -H "Content-Type: application/json" -d '{"id":"1", "msg":"Hello"}' localhost:8080/actor
 HelloHelloHello!
-mentall@acer-laptop:~$ 
-mentall@acer-laptop:~$ curl -X POST -H "Content-Type: application/json" -d '{"path":"akka://LocalSystem/user/WebUI/$a/$a#-1720973719", "msg":"1234"}' localhost:8080/actor
-123412341234!
-mentall@acer-laptop:~$ 
-mentall@acer-laptop:~$ curl -X DELETE -H "Content-Type: application/json" -d '{"path":"akka://LocalSystem/user/WebUI/$a/$a#-1720973719"}' localhost:8080/actor
+mentall@acer-laptop:~$ curl -X DELETE -H "Content-Type: application/json" -d '{"id":"1"}' localhost:8080/actor
 PoisonPill sended to actor
 mentall@acer-laptop:~$ 
-mentall@acer-laptop:~$ curl -X POST -H "Content-Type: application/json" -d '{"path":"akka://LocalSystem/user/WebUI/$a/$a#-1720973719", "msg":"1234"}' localhost:8080/actor
+mentall@acer-laptop:~$ curl -X POST -H "Content-Type: application/json" -d '{"id":"1", "msg":"Hello"}' localhost:8080/actor
 There was an internal server error.
 mentall@acer-laptop:~$ 

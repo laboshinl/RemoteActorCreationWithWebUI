@@ -16,35 +16,6 @@ import spray.http._
 import HttpMethods._
 import MediaTypes._
 
-class ParrotActor() extends Actor{
-  override def receive: Receive = {
-    case msg : String => {println(msg+msg+msg+"!"); sender ! msg+msg+msg+"!"}
-  }
-}
-
-case class whoToGreet(var name: String)
-case class Greeting(var msg: String)
-
-case class ActorPathRepresentation(var path: String)
-case class ActorPathAndMessageRepresentation(var path: String, var msg: String)
-
-class GreetingActor() extends Actor{
-  override def receive: Receive = {
-    case whoToGreet(name) => sender ! Greeting("hello, "+name)
-  }
-}
-
-case class ActorType(var t : String)
-
-class ActorCreator extends Actor{
-  override def receive: Receive = {
-    case ActorType(t) => if (t == "ParrotActor") {
-      println("Got parrotactor, creating")
-      sender ! ActorCreated(context.actorOf(Props[ParrotActor]))
-    }
-  }
-}
-
 class WebUIActor(var remoter:ActorRef)
   extends HttpService with Json4sSupport with Actor with ActorLogging with MyBeautifulOutput
 {
@@ -55,35 +26,10 @@ class WebUIActor(var remoter:ActorRef)
   def actorRefFactory = context
   val json4sFormats = DefaultFormats
 
-  val ac = context.actorOf(Props[ActorCreator])
-
   override def receive = runRoute(route)
-//  {
-//    case _: Http.Connected => sender ! Http.Register(self)
-//
-//    case HttpRequest(GET, Uri.Path("/"), _, _, _) =>
-//      sender ! index
-//
-//    case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
-//      sender ! HttpResponse(entity = "Shutting down in 5 seconds ...")
-//      sender ! Http.Close
-//      remoter ! StopSystem
-//      context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
-//
-//    case HttpRequest(GET, Uri.Path("/actor"), _, _, _) =>
-//      sender ! HttpResponse(entity = "List of available actors")
-//
-//    case HttpRequest(PUT, Uri.Path("/actor"), _, _, _) =>
-//      remoter ! CreateAnotherActor
-//      waiter = sender
-//
-//    case ActorCreated(adr) => {
-//      out("started")
-//
-//      waiter ! HttpResponse(entity = "dasd")
-//      ActorJson(id = "123", ref = "23")
-//    }
-//  }
+
+  var uniqueId : Long = 0
+  var actors = new scala.collection.mutable.HashMap[Long, ActorRef]
 
   lazy val route = {
     path(""){
@@ -102,27 +48,30 @@ class WebUIActor(var remoter:ActorRef)
           }
         }~
           put{
-            entity(as[ActorType]) {
+            entity(as[ActorTypeToJson]) {
               at =>
               complete{
-                val res = Await.result(ac ? at, timeout.duration).asInstanceOf[ActorCreated]
-                HttpResponse(entity = HttpEntity(`text/html`,res.toString))
+                val res = Await.result(remoter ? at, timeout.duration).asInstanceOf[ActorCreated]
+                uniqueId += 1
+                actors += ((uniqueId, res.adr))
+                HttpResponse(entity = HttpEntity(`text/html`,uniqueId.toString))
               }
             }
           }~
           post{
-            entity(as[ActorPathAndMessageRepresentation]) {
+            entity(as[ActorIdAndMessageToJson]) {
               ar => complete{
-                println("Got message \""+ar.msg+"\" for actor "+ar.path)
-                val res = Await.result(context.actorSelection(ar.path) ? ar.msg, timeout.duration)
+                val target = actors(ar.id.toLong)
+                println("Got message \""+ar.msg+"\" for actor "+target)
+                val res = Await.result(target ? ar.msg, timeout.duration)
                 HttpResponse(entity = HttpEntity(`text/html`,res.toString))
               }
             }
           }~
           delete{
-            entity(as[ActorPathRepresentation]) {
+            entity(as[String]) {
               ar => complete{
-                context.actorSelection(ar.path) ! PoisonPill
+                actors(ar.toLong) ! PoisonPill
                 HttpResponse(entity = HttpEntity(`text/html`,"PoisonPill sended to actor"))
               }
             }

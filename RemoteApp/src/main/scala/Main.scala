@@ -4,29 +4,22 @@
 import akka.actor._
 import scala.concurrent.duration._
 
-case object CreateAnotherActor
-case object Gotcha
-case object StopSystem
-case class ActorCreated(val adr: ActorRef)
-
-object Main extends App{
+object Main extends App with MyBeautifulOutput{
   val system = ActorSystem("HelloRemoteSystem")
-  val remoteActor = system.actorOf(Props[RemoteActor], name = "RemoteActor")
-  println("---------STARTED---------")
+  val remoteActor = system.actorOf(Props[RemoteActorCreator], name = "RemoteActor")
+  out("started")
 }
 
-class RemoteActor extends Actor {
+class RemoteActorCreator extends Actor with MyBeautifulOutput {
   import context.dispatcher
 
   override def receive = {
-    case CreateAnotherActor => {println("----CREATE REQUEST----"); sender ! ActorCreated(context.system.actorOf(Props[AnotherActor]))}
-    case StopSystem => context.system.scheduler.scheduleOnce(1.second) {println("----SHUTTING DOWN----"); context.system.shutdown() }
-  }
-}
-
-class AnotherActor extends Actor{
-
-  override def receive = {
-    case msg : String => {println("AnotherActor received: "+msg); sender ! Gotcha}
+    case CreateNewActor(t) =>
+      out("Got request for new actor")
+      if (t == "ParrotActor") {
+        out("Creating parrotActor");
+        sender ! ActorCreated(context.system.actorOf(Props[ParrotActor]))
+      }
+    case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }
   }
 }
