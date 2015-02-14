@@ -12,3 +12,5 @@ case class ActorCreated(val adr: ActorRef) extends Serializable{
 case object CheckAddress extends Serializable
 case object AddressIsOk extends Serializable
 case object StopSystem extends Serializable
+case object ConnectionRequest extends Serializable
+case object Connected extends Serializable

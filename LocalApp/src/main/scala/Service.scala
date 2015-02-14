@@ -69,9 +69,9 @@ class WebUIActor(var remoter:ActorRef)
             }
           }~
           delete{
-            entity(as[String]) {
+            entity(as[ActorIdToJson]) {
               ar => complete{
-                actors(ar.toLong) ! PoisonPill
+                actors(ar.id.toLong) ! PoisonPill
                 HttpResponse(entity = HttpEntity(`text/html`,"PoisonPill sended to actor"))
               }
             }

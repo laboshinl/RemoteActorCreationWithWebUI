@@ -4,13 +4,22 @@ import akka.actor.{ActorRef, Actor}
  * Created by mentall on 12.02.15.
  */
 class RemoteConnection extends Actor with MyBeautifulOutput{
-  val remote = context.actorSelection("akka.tcp://HelloRemoteSystem@127.0.0.1:15150/user/RemoteActor")
   var waiter : ActorRef = null
+
+  var remoteSystems = new scala.collection.mutable.HashMap[Long, ActorRef]
+  var uniqueId : Long = 0
+
+  def remote : ActorRef = {
+    var r = scala.util.Random.nextInt(remoteSystems.size)+1
+    println("I have "+remoteSystems.size+" remote system and i choose "+r+" to send a message")
+    remoteSystems(r)
+  }
 
   override def receive: Receive = {
     case ActorTypeToJson(t) => {out("Got request on creation"); waiter = sender; remote ! CreateNewActor(t)}
     case ActorCreated(adr) =>  {out("Checking address"); adr ! CheckAddress}
     case AddressIsOk =>        {out("Adress is ok"); waiter ! ActorCreated(sender)}
-    case StopSystem =>         {out("Stopping remote system"); remote ! StopSystem}
+    case StopSystem =>         {out("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
+    case ConnectionRequest =>  {out("Connection request"); uniqueId += 1; remoteSystems += ((uniqueId, sender)); sender!Connected}
   }
 }
