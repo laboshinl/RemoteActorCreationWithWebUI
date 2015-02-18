@@ -14,6 +14,7 @@ libraryDependencies ++= {
     "io.spray" %% "spray-routing" % sprayVersion,
     "com.typesafe.akka" % "akka-actor_2.11" % akkaVersion,
     "com.typesafe.akka" % "akka-remote_2.11" % akkaVersion,
-    "org.json4s" %% "json4s-native" % "3.2.11"
+    "org.json4s" %% "json4s-native" % "3.2.11",
+    "org.pacesys" % "openstack4j" % "2.0.1"
   )
 }

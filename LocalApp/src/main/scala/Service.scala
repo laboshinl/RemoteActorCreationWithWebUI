@@ -62,9 +62,16 @@ class WebUIActor(var remoter:ActorRef)
             entity(as[ActorIdAndMessageToJson]) {
               ar => complete{
                 val target = actors(ar.id.toLong)
-                println("Got message \""+ar.msg+"\" for actor "+target)
-                val res = Await.result(target ? ar.msg, timeout.duration)
-                HttpResponse(entity = HttpEntity(`text/html`,res.toString))
+                if (target == null){
+                  println("Got message, but actor is dead")
+                  HttpResponse(entity = HttpEntity(`text/html`,"Got message, but actor is dead\n"))
+                }
+                else {
+                  println("Got message \"" + ar.msg + "\" for actor " + target)
+                  val res = Await.result(target ? ar.msg, timeout.duration)
+                  println("Actor's response:" + res.toString)
+                  HttpResponse(entity = HttpEntity(`text/html`,res.toString))
+                }
               }
             }
           }~
@@ -72,6 +79,7 @@ class WebUIActor(var remoter:ActorRef)
             entity(as[ActorIdToJson]) {
               ar => complete{
                 actors(ar.id.toLong) ! PoisonPill
+                actors(ar.id.toLong) = null
                 HttpResponse(entity = HttpEntity(`text/html`,"PoisonPill sended to actor"))
               }
             }
@@ -129,13 +137,6 @@ class WebUIActor(var remoter:ActorRef)
 
   val availableActors =
         "{ "+
-         "\"parrotActor\":\"Simple actor who respond with yours message\","+
-         "\"greetingActor\":{"+
-           "\"description\" : \"Actor who would greet you\""+
-           "\"messages\":{"+
-             "\"whoToGreet(var name: String)\":\"Defines name of greeting subject\","+
-             "\"Greeting(var msg: String)\":\"His respond with the message\""+
-           "}"+
-         "}"+
+         "\"parrotActor\":\"Simple actor who respond with yours message\""+
         "}"
 }
