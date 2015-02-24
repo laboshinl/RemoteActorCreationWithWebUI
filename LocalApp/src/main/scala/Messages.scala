@@ -16,5 +16,10 @@ case object ConnectionRequest extends Serializable
 case object Connected extends Serializable
 
 case class ActorIdAndMessageToJson(var id: String, var msg: String) extends Serializable
-case class ActorTypeToJson(var t : String) extends Serializable
-case class ActorIdToJson(var id : String) extends Serializable
+case class ActorTypeToJson(val t : String) extends Serializable
+case class ActorIdToJson(val id : String) extends Serializable
+
+case object StartMachine
+case class MachineStarted(val id : String) extends Serializable
+
+case class TaskIdToJson(val id : String) extends Serializable

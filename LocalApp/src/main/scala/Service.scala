@@ -3,10 +3,11 @@
  */
 
 import akka.actor.Actor.Receive
+import scala.util.{Success, Failure}
 import org.json4s.{Formats, DefaultFormats}
 import spray.httpx.Json4sSupport
 import spray.routing.HttpService
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
 import akka.util.Timeout
 import akka.actor._
@@ -16,20 +17,24 @@ import spray.http._
 import HttpMethods._
 import MediaTypes._
 
-class WebUIActor(var remoter:ActorRef)
-  extends HttpService with Json4sSupport with Actor with ActorLogging with MyBeautifulOutput
+class WebUIActor extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
 {
-  import akka.pattern.{ ask, pipe }
-  import context.dispatcher
-
-  implicit val timeout: Timeout = 1.second // for the actor 'asks'
+  implicit def executionContext = actorRefFactory.dispatcher
   def actorRefFactory = context
-  val json4sFormats = DefaultFormats
-
   override def receive = runRoute(route)
 
+  val RemoterActor = context.actorOf(Props[RemoteConnection], "Remoter")
+  val OpenstackActor = context.actorOf(Props[OpenstackActor], "Openstack")
+
+  implicit val timeout: Timeout = 1.second // for the actor 'asks'
+
+  val json4sFormats = DefaultFormats
+
   var uniqueId : Long = 0
+  var uniquetask : Long = 0
   var actors = new scala.collection.mutable.HashMap[Long, ActorRef]
+  var tasks = new scala.collection.mutable.HashMap[Long, Future[MachineStarted]]
+
 
   lazy val route = {
     path(""){
@@ -51,7 +56,7 @@ class WebUIActor(var remoter:ActorRef)
             entity(as[ActorTypeToJson]) {
               at =>
               complete{
-                val res = Await.result(remoter ? at, timeout.duration).asInstanceOf[ActorCreated]
+                val res = Await.result(RemoterActor ? at, timeout.duration).asInstanceOf[ActorCreated]
                 uniqueId += 1
                 actors += ((uniqueId, res.adr))
                 HttpResponse(entity = HttpEntity(`text/html`,uniqueId.toString))
@@ -93,12 +98,35 @@ class WebUIActor(var remoter:ActorRef)
         }~
           put{
             complete {
-              index
+              val f : Future[MachineStarted] = (OpenstackActor ? StartMachine).asInstanceOf[Future[MachineStarted]]
+              uniquetask += 1
+              tasks += ((uniquetask, f))
+              HttpResponse(entity = "Machine creation is planned: "+uniquetask)
+            }
+          }~
+          post{
+            // TODO: HUGE PROBLEM HERE
+            entity(as[TaskIdToJson]) {
+              ar => complete{
+                val t = tasks(ar.id.toLong)
+                var id : Int = -1
+                if(t.isCompleted) {
+                  t.onComplete({
+                    case Success(ms) => id = ms.id.toInt
+                  })
+                  if(id == -1) HttpResponse(entity = HttpEntity(`text/html`,"Task failure"))
+                    else HttpResponse(entity = HttpEntity(`text/html`,"Task completed:"+id))
+                }
+                else
+                {
+                  HttpResponse(entity = HttpEntity(`text/html`,"Task incomplete"))
+                }
+              }
             }
           }~
           delete{
             complete{
-              remoter ! StopSystem
+              RemoterActor ! StopSystem
               context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
               sender ! HttpResponse(entity = "Shutting down in 5 seconds ...\n")
               Http.Close
@@ -107,35 +135,33 @@ class WebUIActor(var remoter:ActorRef)
       }
   }
 
-  lazy val index = HttpResponse(
-    entity = HttpEntity(`text/html`,
-      <html>
-        <body>
-          <h1>Welcome!</h1>
-          <table border="1">
-            <caption>Available actions</caption>
-            <tr><th>Resource</th><th>GET</th><th>PUT</th><th>POST</th><th>DELETE</th></tr>
-            <tr>
-              <td>localhost:8080/actor</td>
-              <td>List of available actor classes and description</td>
-              <td>Create actor of selected type</td>
-              <td>Tell message to actor</td>
-              <td>Delete actor with selected ActorRef</td>
-            </tr>
-            <tr>
-              <td>localhost:8080/system</td>
-              <td>List of available actor systems</td>
-              <td>Create additional system on new machine</td>
-              <td> - </td>
-              <td>Stop actor system</td>
-            </tr>
-          </table>
-        </body>
-      </html>.toString()
-    )
-  )
+  lazy val indexPage = <html>
+    <body>
+      <h1>Welcome!</h1>
+      <table border="1">
+        <caption>Available actions</caption>
+        <tr><th>Resource</th><th>GET</th><th>PUT</th><th>POST</th><th>DELETE</th></tr>
+        <tr>
+          <td>localhost:8080/actor</td>
+          <td>List of available actor classes and description</td>
+          <td>Create actor of selected type</td>
+          <td>Tell message to actor</td>
+          <td>Delete actor with selected ActorRef</td>
+        </tr>
+        <tr>
+          <td>localhost:8080/system</td>
+          <td>List of available actor systems</td>
+          <td>Create additional system on new machine</td>
+          <td> - </td>
+          <td>Stop actor system</td>
+        </tr>
+      </table>
+    </body>
+  </html>.toString()
 
-  val availableActors =
+  lazy val index = HttpResponse(entity = HttpEntity(`text/html`,indexPage))
+
+  val availableActors : String =
         "{ "+
          "\"parrotActor\":\"Simple actor who respond with yours message\""+
         "}"

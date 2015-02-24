@@ -7,8 +7,7 @@ import spray.can.Http
  */
 object Boot extends App with MyBeautifulOutput{
     implicit val system = ActorSystem("LocalSystem")
-    val remoter = system.actorOf(Props[RemoteConnection], "Remoter")
-    val webUi = system.actorOf(Props(classOf[WebUIActor],remoter), "WebUI")
+    val webUi = system.actorOf(Props(classOf[WebUIActor]), "WebUI")
     IO(Http) ! Http.Bind(webUi, interface = "localhost", port = 8080)
     out("started")
 }
