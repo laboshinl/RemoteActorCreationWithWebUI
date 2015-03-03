@@ -33,10 +33,13 @@ class OpenstackActor extends Actor with MyBeautifulOutput{
       sender ! MachineTaskCompleted(uniqueId.toString)
     }
     case TerminateMachine(m) => {
-      println("terminate server "+m)
-      os.compute().servers().delete(Servers(m).getId)
-      out("machine terminated")
-      sender ! MachineTaskCompleted(uniqueId.toString)
+      if(Servers.contains(m)){
+        println("terminate server "+m)
+        os.compute().servers().delete(Servers(m).getId)
+        Servers -= m
+        out("machine terminated")
+        sender ! MachineTaskCompleted(m.toString)
+      }
     }
     case msg : String => println(msg)
   }

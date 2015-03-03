@@ -54,10 +54,13 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
             entity(as[ActorTypeToJson]) {
               at =>
               complete{
-                val res = Await.result(RemoterActor ? at, timeout.duration).asInstanceOf[ActorCreated]
-                uniqueId += 1
-                actors += ((uniqueId, res.adr))
-                HttpResponse(entity = HttpEntity(`text/html`,uniqueId.toString))
+                val res = Await.result(RemoterActor ? at, timeout.duration)
+                if (res.isInstanceOf[ActorCreated]){
+                  uniqueId += 1
+                  actors += ((uniqueId, res.asInstanceOf[ActorCreated].adr))
+                  HttpResponse(entity = HttpEntity(`text/html`,uniqueId.toString))
+                }
+                else HttpResponse(entity = HttpEntity(`text/html`,"Wrong type"))
               }
             }
           }~
@@ -81,9 +84,14 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
           delete{
             entity(as[ActorIdToJson]) {
               ar => complete{
-                actors(ar.id.toLong) ! PoisonPill
-                actors(ar.id.toLong) = null
-                HttpResponse(entity = HttpEntity(`text/html`,"PoisonPill sended to actor"))
+                if (actors.contains(ar.id.toLong)){
+                  actors(ar.id.toLong) ! PoisonPill
+                  actors -= ar.id.toLong
+                  HttpResponse(entity = HttpEntity(`text/html`,"PoisonPill sended to actor"))
+                }
+                else {
+                  HttpResponse(entity = HttpEntity(`text/html`,"There is no actor with such id"))
+                }
               }
             }
           }
@@ -105,13 +113,22 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
             // TODO: HUGE PROBLEM HERE
             entity(as[TaskIdToJson]) {
               ar => complete{
-                if(tasks(ar.id.toLong).isCompleted){
-                  val id = Await.result(tasks(ar.id.toLong), 1 minute).asInstanceOf[MachineTaskCompleted].id
-                  HttpResponse(entity = HttpEntity(`text/html`,"Task completed:"+id.toString))
+                if (tasks.contains(ar.id.toLong)){
+                  if(tasks(ar.id.toLong).isCompleted){
+                    val compl = Await.result(tasks(ar.id.toLong), 1 minute)
+                    if (compl.isInstanceOf[MachineTaskCompleted])
+                      HttpResponse(entity = HttpEntity(`text/html`,"Task completed:"
+                        +compl.asInstanceOf[MachineTaskCompleted].id.toString))
+                    else
+                      HttpResponse(entity = HttpEntity(`text/html`,"There is no machine with such id"))
+                  }
+                  else
+                  {
+                    HttpResponse(entity = HttpEntity(`text/html`,"Task incomplete"))
+                  }
                 }
-                else
-                {
-                  HttpResponse(entity = HttpEntity(`text/html`,"Task incomplete"))
+                else {
+                  HttpResponse(entity = HttpEntity(`text/html`,"There is no task with such id"))
                 }
               }
             }

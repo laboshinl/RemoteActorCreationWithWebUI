@@ -12,7 +12,7 @@ object Main extends App with MyBeautifulOutput{
 
 class RemoteActorCreator extends Actor with MyBeautifulOutput {
   import context.dispatcher
-  val remote = context.actorSelection("akka.tcp://LocalSystem@192.168.1.145:11111/user/Remoter")
+  val remote = context.actorSelection("akka.tcp://LocalSystem@127.0.0.1:11111/user/Remoter")
   remote ! ConnectionRequest
 
   override def receive = {
@@ -22,6 +22,7 @@ class RemoteActorCreator extends Actor with MyBeautifulOutput {
         out("Creating parrotActor");
         sender ! ActorCreated(context.system.actorOf(Props[ParrotActor]))
       }
+      else sender ! NonexistentActorType
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }
     case Connected  => out("connected")
   }

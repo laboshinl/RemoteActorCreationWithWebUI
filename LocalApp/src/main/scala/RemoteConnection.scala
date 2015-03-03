@@ -20,6 +20,7 @@ class RemoteConnection extends Actor with MyBeautifulOutput{
   override def receive: Receive = {
     case ActorTypeToJson(t) => {out("Got request on creation"); waiter = sender; remote ! CreateNewActor(t)}
     case ActorCreated(adr) =>  {out("Checking address"); adr ! CheckAddress}
+    case NonexistentActorType =>  {out("Nonexsistent actor type"); waiter ! NonexistentActorType}
     case AddressIsOk =>        {out("Address is ok"); waiter ! ActorCreated(sender)}
     case StopSystem =>         {out("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
     case ConnectionRequest =>  {out("Connection request"); uniqueId += 1; remoteSystems += ((uniqueId, sender)); sender!Connected}
