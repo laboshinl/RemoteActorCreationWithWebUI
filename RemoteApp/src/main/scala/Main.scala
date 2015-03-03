@@ -12,7 +12,7 @@ object Main extends App with MyBeautifulOutput{
 
 class RemoteActorCreator extends Actor with MyBeautifulOutput {
   import context.dispatcher
-  val remote = context.actorSelection("akka.tcp://LocalSystem@127.0.0.1:11111/user/Remoter")
+  val remote = context.actorSelection("akka.tcp://LocalSystem@192.168.1.145:11111/user/Remoter")
   remote ! ConnectionRequest
 
   override def receive = {

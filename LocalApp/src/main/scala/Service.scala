@@ -17,23 +17,21 @@ import spray.http._
 import HttpMethods._
 import MediaTypes._
 
-class WebUIActor extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
+class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
+  extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
 {
   implicit def executionContext = actorRefFactory.dispatcher
   def actorRefFactory = context
   override def receive = runRoute(route)
 
-  val RemoterActor = context.actorOf(Props[RemoteConnection], "Remoter")
-  val OpenstackActor = context.actorOf(Props[OpenstackActor], "Openstack")
-
-  implicit val timeout: Timeout = 1.second // for the actor 'asks'
+  implicit val timeout: Timeout = 1 minute // for the actor 'asks'
 
   val json4sFormats = DefaultFormats
 
   var uniqueId : Long = 0
-  var uniquetask : Long = 0
+  var uniqueTask : Long = 0
   var actors = new scala.collection.mutable.HashMap[Long, ActorRef]
-  var tasks = new scala.collection.mutable.HashMap[Long, Future[MachineStarted]]
+  var tasks = new scala.collection.mutable.HashMap[Long, Future[Any]]
 
 
   lazy val route = {
@@ -98,24 +96,18 @@ class WebUIActor extends HttpService with Json4sSupport with Actor with MyBeauti
         }~
           put{
             complete {
-              val f : Future[MachineStarted] = (OpenstackActor ? StartMachine).asInstanceOf[Future[MachineStarted]]
-              uniquetask += 1
-              tasks += ((uniquetask, f))
-              HttpResponse(entity = "Machine creation is planned: "+uniquetask)
+              uniqueTask += 1
+              tasks += ((uniqueTask, (OpenstackActor ? StartMachine)))
+              HttpResponse(entity = "Machine creation is planned: "+uniqueTask)
             }
           }~
           post{
             // TODO: HUGE PROBLEM HERE
             entity(as[TaskIdToJson]) {
               ar => complete{
-                val t = tasks(ar.id.toLong)
-                var id : Int = -1
-                if(t.isCompleted) {
-                  t.onComplete({
-                    case Success(ms) => id = ms.id.toInt
-                  })
-                  if(id == -1) HttpResponse(entity = HttpEntity(`text/html`,"Task failure"))
-                    else HttpResponse(entity = HttpEntity(`text/html`,"Task completed:"+id))
+                if(tasks(ar.id.toLong).isCompleted){
+                  val id = Await.result(tasks(ar.id.toLong), 1 minute).asInstanceOf[MachineTaskCompleted].id
+                  HttpResponse(entity = HttpEntity(`text/html`,"Task completed:"+id.toString))
                 }
                 else
                 {
@@ -125,11 +117,12 @@ class WebUIActor extends HttpService with Json4sSupport with Actor with MyBeauti
             }
           }~
           delete{
-            complete{
-              RemoterActor ! StopSystem
-              context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
-              sender ! HttpResponse(entity = "Shutting down in 5 seconds ...\n")
-              Http.Close
+            entity(as[TaskIdToJson]) {
+              ar => complete {
+                uniqueTask += 1
+                tasks += ((uniqueTask, (OpenstackActor ? TerminateMachine(ar.id.toLong))))
+                HttpResponse(entity = "Machine termination is planned: "+uniqueTask)
+              }
             }
           }
       }

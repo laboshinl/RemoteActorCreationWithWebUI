@@ -9,6 +9,8 @@ class RemoteConnection extends Actor with MyBeautifulOutput{
   var remoteSystems = new scala.collection.mutable.HashMap[Long, ActorRef]
   var uniqueId : Long = 0
 
+  out("Remoter started")
+
   def remote : ActorRef = {
     var r = scala.util.Random.nextInt(remoteSystems.size)+1
     println("I have "+remoteSystems.size+" remote system and i choose "+r+" to send a message")

@@ -17,17 +17,26 @@ class OpenstackActor extends Actor with MyBeautifulOutput{
   val networks : java.util.List[String] = new java.util.LinkedList()
   networks.add("23043359-4dd3-482e-8854-75ce39d78aa6")
   var uniqueId : Long = 0
-  var machines = new scala.collection.mutable.HashMap[Long, Server]
+  var Servers = new scala.collection.mutable.HashMap[Long, Server]
+  lazy val bld = Builders.server().
+    availabilityZone("nova").name("actors-handler-"+uniqueId).
+    flavor("ea07b19e-db4b-4aaf-8afb-1dd081f2aff1").
+    image("ad189f85-d25c-453f-99ca-0b210c7c4e40").
+    keypairName("student").networks(networks)
 
   override def receive = {
     case StartMachine => {
       uniqueId += 1
-      val bld = Builders.server().availabilityZone("nova").name("actors-handler-"+uniqueId).flavor("ea07b19e-db4b-4aaf-8afb-1dd081f2aff1").
-        image("ad189f85-d25c-453f-99ca-0b210c7c4e40").keypairName("student").networks(networks)
       val svr = os.compute().servers().boot(bld.build())
-      machines += ((uniqueId, svr))
+      Servers += ((uniqueId, svr))
       out("machine started")
-      sender ! MachineStarted
+      sender ! MachineTaskCompleted(uniqueId.toString)
+    }
+    case TerminateMachine(m) => {
+      println("terminate server "+m)
+      os.compute().servers().delete(Servers(m).getId)
+      out("machine terminated")
+      sender ! MachineTaskCompleted(uniqueId.toString)
     }
     case msg : String => println(msg)
   }
