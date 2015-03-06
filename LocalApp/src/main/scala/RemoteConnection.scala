@@ -3,6 +3,13 @@ import akka.actor.{ActorRef, Actor}
 /**
  * Created by mentall on 12.02.15.
  */
+
+/**
+ * My dear friend, if u want to write good code - u should write some comments
+ * before class declaration. U don't need write a lot of words, only main idea.
+ * Thx a lot.
+ * I've remove one warning from this file
+ */
 class RemoteConnection extends Actor with MyBeautifulOutput{
   var waiter : ActorRef = null
 
@@ -12,17 +19,18 @@ class RemoteConnection extends Actor with MyBeautifulOutput{
   out("Remoter started")
 
   def remote : ActorRef = {
-    var r = scala.util.Random.nextInt(remoteSystems.size)+1
-    println("I have "+remoteSystems.size+" remote system and i choose "+r+" to send a message")
+    // Please, make u code breath. Please :-[
+    val r = scala.util.Random.nextInt(remoteSystems.size) + 1
+    println("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
     remoteSystems(r)
   }
 
   override def receive: Receive = {
-    case ActorTypeToJson(t) => {out("Got request on creation"); waiter = sender; remote ! CreateNewActor(t)}
-    case ActorCreated(adr) =>  {out("Checking address"); adr ! CheckAddress}
+    case ActorTypeToJson(t)   =>  {out("Got request on creation"); waiter = sender; remote ! CreateNewActor(t)}
+    case ActorCreated(adr)    =>  {out("Checking address"); adr ! CheckAddress}
     case NonexistentActorType =>  {out("Nonexsistent actor type"); waiter ! NonexistentActorType}
-    case AddressIsOk =>        {out("Address is ok"); waiter ! ActorCreated(sender)}
-    case StopSystem =>         {out("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
-    case ConnectionRequest =>  {out("Connection request"); uniqueId += 1; remoteSystems += ((uniqueId, sender)); sender!Connected}
+    case AddressIsOk          =>  {out("Address is ok"); waiter ! ActorCreated(sender)}
+    case StopSystem           =>  {out("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
+    case ConnectionRequest    =>  {out("Connection request"); uniqueId += 1; remoteSystems += ((uniqueId, sender)); sender!Connected}
   }
 }
