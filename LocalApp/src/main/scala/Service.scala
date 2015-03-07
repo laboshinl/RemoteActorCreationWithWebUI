@@ -2,19 +2,16 @@
  * Created by mentall on 08.02.15.
  */
 
-import akka.actor.Actor.Receive
-import scala.util.{Success, Failure}
-import org.json4s.{Formats, DefaultFormats}
+
+import org.json4s.DefaultFormats
 import spray.httpx.Json4sSupport
 import spray.routing.HttpService
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
 import akka.util.Timeout
 import akka.actor._
-import spray.can.Http
-import akka.pattern.{ ask, pipe }
+import akka.pattern.ask
 import spray.http._
-import HttpMethods._
 import MediaTypes._
 
 class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
