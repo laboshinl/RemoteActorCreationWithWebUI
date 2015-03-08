@@ -22,7 +22,7 @@ class ReceiverActor[K, V](val address : String, val port : String) extends Actor
   var routingInfo = new scala.collection.mutable.HashMap[K, V]
 
   override def receive: Receive = {
-    case msg : ZMQMessage   => logger.debug("ZMQ<essage received: " + msg.toString)
+    case msg : ZMQMessage   => logger.debug("ZMQmessage received: " + msg.toString)
     case msg : String       => logger.debug("Received string: " + msg)
     case s   : SetMessage[K, V]   => {
       routingInfo += ((s.Key, s.Value));
