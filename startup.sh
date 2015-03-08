@@ -5,4 +5,4 @@ git pull
 echo "Switch directory to RemoteApp"
 cd RemoteApp
 echo "Starting programm"
-sbt run
+sbt run &
