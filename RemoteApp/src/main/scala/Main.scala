@@ -2,7 +2,7 @@
  * Created by mentall on 08.02.15.
  */
 
-import java.net.InetAddress
+import java.net.{InetAddress, NetworkInterface}
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
@@ -29,6 +29,11 @@ class RemoteActorCreator extends Actor with MyBeautifulOutput {
       else sender ! NonexistentActorType
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }
     case Connected  => out("connected")
-    case TellYourIP => sender ! MyIPIs(InetAddress.getLocalHost().getHostAddress())
+    case TellYourIP => {
+      val list : List[String] = for (iface : NetworkInterface <- NetworkInterface.getNetworkInterfaces())
+                  for (address : InetAddress <- iface.getInetAddresses)
+                    yield address.getHostAddress.toString
+      sender ! MyIPIs(list.mkString)
+    }
   }
 }
