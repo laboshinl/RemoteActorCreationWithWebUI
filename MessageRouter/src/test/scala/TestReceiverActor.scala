@@ -3,12 +3,14 @@ import akka.pattern.ask
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.scalatest._
+import akka.util._
 
 /**
  * Created by mentall on 08.03.15.
  */
+
 class TestReceiverActor extends FeatureSpec with GivenWhenThen with MessagesOfReceiverActor{
-  implicit val timeout : akka.util.Timeout = 2 minute
+  implicit val timeout : akka.util.Timeout = akka.util.Timeout.durationToTimeout(2.minute)
 
   feature("Correct Set/Get implementation"){
     scenario("Create Actor and send him Set"){
@@ -16,9 +18,9 @@ class TestReceiverActor extends FeatureSpec with GivenWhenThen with MessagesOfRe
       val testReceiverActor = system.actorOf(Props(new ReceiverActor[String, String]("127.0.0.1", "37177")))
 
       When("Sending set message")
-      val respSet = Await.result(testReceiverActor ? SetMessage[String, String]("TestKey", "TestValue"), 2.minute)
-      if (respSet.asInstanceOf[String].equals("Value added")) Then("Good for now, key/value is set")
-      else Then("Not good, key/value is not set"); assert(false)
+      val respSet = Await.result(testReceiverActor ? SetMessage[String, String]("TestKey", "TestValue"), 2.second)
+      if ((respSet.asInstanceOf[String]).equals("ok")) Then("Good for now, key/value is set")
+      else {Then("Not good, key/value is not set"); assert(false)}
 
       When("Sending get message with existing key")
       val respGet1 = Await.result(testReceiverActor ? GetMessage[String]("TestKey"), 2.minute)

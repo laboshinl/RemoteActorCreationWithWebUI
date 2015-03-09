@@ -23,13 +23,19 @@ class ReceiverActor[K, V](val address : String, val port : String) extends Actor
 
   override def receive: Receive = {
     case msg : ZMQMessage   => logger.debug("ZMQmessage received: " + msg.toString)
-    case msg : String       => logger.debug("Received string: " + msg)
-    case s   : SetMessage[K, V]   => {
-      routingInfo += ((s.Key, s.Value));
+    case msg : String       => logger.debug("Received string: " + msg); sender ! msg
+
+    /**
+     * Look here - generic types need to be matched like this.
+     */
+    case msg if msg.isInstanceOf[SetMessage[K, V]] => {
+      val s = msg.asInstanceOf[SetMessage[K, V]]
+      routingInfo += ((s.Key, s.Value))
       logger.debug("Received Set message: " + s.Key.toString + " " + s.Value.toString)
-      sender ! "Value added"
+      sender ! "ok" //erlang convention
     }
-    case g   : GetMessage[K]   => {
+    case msg if msg.isInstanceOf[GetMessage[K]]     => {
+      val g = msg.asInstanceOf[GetMessage[K]]
       if (routingInfo.contains(g.Key)) {
         logger.debug("Received Get message: " + g.Key.toString + ", returning: " + routingInfo(g.Key))
         sender ! routingInfo(g.Key)
@@ -39,7 +45,7 @@ class ReceiverActor[K, V](val address : String, val port : String) extends Actor
         sender ! NoElementWithSuchKey
       }
     }
-    case _                  => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port)
+    case aNonMsg               => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }
 
 }
