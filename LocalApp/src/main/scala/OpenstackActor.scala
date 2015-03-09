@@ -1,4 +1,5 @@
 import akka.actor.Actor
+import com.typesafe.config.ConfigFactory
 import org.openstack4j.api.{Builders, OSClient}
 import org.openstack4j.model.compute.Server
 import org.openstack4j.openstack.OSFactory
@@ -7,14 +8,17 @@ import org.openstack4j.openstack.OSFactory
  * Created by mentall on 18.02.15.
  */
 class OpenstackActor extends Actor with MyBeautifulOutput{
+  val config = ConfigFactory.load()
+
   val os : OSClient = OSFactory.builder()
-    .endpoint("http://195.208.117.177:5000/v2.0")
-    .credentials("student","domrachev.mail@gmail.com")
-    .tenantName("student")
+    .endpoint   ( config.getString("my.own.openstack-ip")       )
+    .credentials( config.getString("my.own.openstack-login"),
+                  config.getString("my.own.openstack-password") )
+    .tenantName ( config.getString("my.own.openstack-tenant")   )
     .authenticate()
 
   val networks : java.util.List[String] = new java.util.LinkedList()
-  networks.add("23043359-4dd3-482e-8854-75ce39d78aa6")
+  networks.add(   config.getString("my.own.openstack-network")  )
   var uniqueId : Long = 0
   var Servers = new scala.collection.mutable.HashMap[Long, Server]
 
@@ -22,10 +26,12 @@ class OpenstackActor extends Actor with MyBeautifulOutput{
     case StartMachine => {
       uniqueId += 1
       val svr = os.compute().servers().boot(Builders.server().
-        availabilityZone("nova").name("actors-handler-" + uniqueId).
-        flavor("ea07b19e-db4b-4aaf-8afb-1dd081f2aff1").
-        image("ad189f85-d25c-453f-99ca-0b210c7c4e40").
-        keypairName("student").networks(networks).build())
+        availabilityZone(config.getString("my.own.openstack-availibility-zone")).
+        name("actors-handler-" + uniqueId).
+        flavor     ( config.getString("my.own.openstack-flavour")  ).
+        image      ( config.getString("my.own.openstack-image")    ).
+        keypairName( config.getString("my.own.openstack-key-pair") ).
+        networks(networks).build())
       Servers += ((uniqueId, svr))
       out("machine started")
       sender ! MachineTaskCompleted(uniqueId.toString)

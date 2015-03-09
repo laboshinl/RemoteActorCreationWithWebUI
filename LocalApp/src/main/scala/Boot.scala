@@ -1,5 +1,6 @@
 import akka.actor.{Props, ActorSystem}
 import akka.io.IO
+import com.typesafe.config.ConfigFactory
 import spray.can.Http
 
 /**
@@ -10,6 +11,9 @@ object Boot extends App with MyBeautifulOutput{
     val r = system.actorOf(Props[RemoteConnection], "Remoter")
     val o = system.actorOf(Props[OpenstackActor], "Openstack")
     val webUi = system.actorOf(Props(classOf[WebUIActor], r, o), "WebUI")
-    IO(Http) ! Http.Bind(webUi, interface = "localhost", port = 8080)
+    val config = ConfigFactory.load()
+    IO(Http) ! Http.Bind(webUi,
+      interface = config.getString("my.own.spray-bind-ip"),
+      port = config.getInt("my.own.spray-bind-port"))
     out("started")
 }

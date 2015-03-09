@@ -42,6 +42,8 @@ class TestOpenStackActor extends FeatureSpec with GivenWhenThen {
         case true => Then("All good, machine stopped, response: " + secondResponse)
         case _ => Then("All bad, se response: " + secondResponse); assert(false)
       }
+
+
     }
   }
 }
