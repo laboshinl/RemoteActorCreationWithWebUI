@@ -15,3 +15,6 @@ case object AddressIsOk extends Serializable
 case object StopSystem extends Serializable
 case object ConnectionRequest extends Serializable
 case object Connected extends Serializable
+
+case object TellYourIP
+case class MyIPIs (val IP : String)

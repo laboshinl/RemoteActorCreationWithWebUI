@@ -26,3 +26,6 @@ case class MachineTaskCompleted(val id : String) extends Serializable
 case object NoMachineWithSuchId extends Serializable
 
 case class TaskIdToJson(val id : String) extends Serializable
+
+case object TellYourIP
+case class MyIPIs (val IP : String)

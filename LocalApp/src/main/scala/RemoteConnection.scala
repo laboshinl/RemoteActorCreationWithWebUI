@@ -5,10 +5,7 @@ import akka.actor.{ActorRef, Actor}
  */
 
 /**
- * My dear friend, if u want to write good code - u should write some comments
- * before class declaration. U don't need write a lot of words, only main idea.
- * Thx a lot.
- * I've remove one warning from this file
+ * This class is a broker of messages from webui to remote actor in actor system in VM
  */
 class RemoteConnection extends Actor with MyBeautifulOutput{
   var waiter : ActorRef = null
@@ -31,6 +28,8 @@ class RemoteConnection extends Actor with MyBeautifulOutput{
     case NonexistentActorType =>  {out("Nonexsistent actor type"); waiter ! NonexistentActorType}
     case AddressIsOk          =>  {out("Address is ok"); waiter ! ActorCreated(sender)}
     case StopSystem           =>  {out("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
-    case ConnectionRequest    =>  {out("Connection request"); uniqueId += 1; remoteSystems += ((uniqueId, sender)); sender!Connected}
+    case ConnectionRequest    =>  {out("Connection request"); uniqueId += 1;
+      remoteSystems += ((uniqueId, sender)); sender!Connected; sender ! TellYourIP}
+    case MyIPIs(ip)           =>  {out(ip)}
   }
 }
