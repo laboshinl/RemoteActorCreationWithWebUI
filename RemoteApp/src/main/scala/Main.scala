@@ -7,6 +7,7 @@ import java.net.{InetAddress, NetworkInterface}
 import akka.actor._
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
+import scala.collection.JavaConversions._
 
 object Main extends App with MyBeautifulOutput{
   val system = ActorSystem("HelloRemoteSystem")
@@ -15,6 +16,12 @@ object Main extends App with MyBeautifulOutput{
 }
 
 class RemoteActorCreator extends Actor with MyBeautifulOutput {
+  val addresses = new StringBuilder
+  for (iface : NetworkInterface <- NetworkInterface.getNetworkInterfaces())
+    for (address : InetAddress <- iface.getInetAddresses)
+      addresses ++= address.getHostAddress + "\n"
+  println(addresses.mkString)
+
   import context.dispatcher
   val remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
   remote ! ConnectionRequest
@@ -29,11 +36,6 @@ class RemoteActorCreator extends Actor with MyBeautifulOutput {
       else sender ! NonexistentActorType
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }
     case Connected  => out("connected")
-    case TellYourIP => {
-      val list : List[String] = for (iface : NetworkInterface <- NetworkInterface.getNetworkInterfaces())
-                  for (address : InetAddress <- iface.getInetAddresses)
-                    yield address.getHostAddress.toString
-      sender ! MyIPIs(list.mkString)
-    }
+    case TellYourIP => sender ! MyIPIs(addresses.mkString)
   }
 }
