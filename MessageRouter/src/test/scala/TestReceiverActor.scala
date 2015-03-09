@@ -3,7 +3,11 @@ import akka.pattern.ask
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.scalatest._
-import akka.util._
+import akka.zeromq._
+import org.zeromq.ZMQ
+import java.util.Random
+import ZHelpers._
+
 
 /**
  * Created by mentall on 08.03.15.
@@ -11,10 +15,10 @@ import akka.util._
 
 class TestReceiverActor extends FeatureSpec with GivenWhenThen with MessagesOfReceiverActor{
   implicit val timeout : akka.util.Timeout = akka.util.Timeout.durationToTimeout(2.minute)
+  implicit val system = ActorSystem("TestSystem")
 
   feature("Correct Set/Get implementation"){
-    scenario("Create Actor and send him Set"){
-      implicit val system = ActorSystem("TestSystem")
+    scenario("Create Actor and send him Set") {
       val testReceiverActor = system.actorOf(Props(new ReceiverActor[String, String]("127.0.0.1", "37177")))
 
       When("Sending set message")
@@ -42,6 +46,21 @@ class TestReceiverActor extends FeatureSpec with GivenWhenThen with MessagesOfRe
         assert(false)
       }
       else if (respGet1.isInstanceOf[NoElementWithSuchKey]) Then("Good, no element with such key")
+    }
+  }
+
+  feature("Send ZeroMQMessage to Router") {
+    scenario("Send Test") {
+      val testReceiverActor = system.actorOf(Props(new ReceiverActor[String, String]("*", "5555")))
+      val ctx = ZMQ.context(1)
+      val client = ctx.socket(ZMQ.DEALER)
+      val rand = GetRandomGen
+      client.setIdentity((rand.nextLong.toString + "-" + rand.nextLong.toString).getBytes)
+      val identity = new String(client getIdentity)
+
+      client.connect("tcp://localhost:5555")
+      val msg = new ZMsg("Hello")
+      client.sendMsg(msg)
     }
   }
 }

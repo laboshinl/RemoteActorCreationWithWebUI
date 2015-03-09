@@ -16,7 +16,7 @@ import akka.zeromq._
  */
 
 class ReceiverActor[K, V](val address : String, val port : String) extends Actor with MessagesOfReceiverActor{
-  val listenSocket : ActorRef = ZeroMQExtension(context.system).newSocket(SocketType.Router, Listener(self), Bind("tcp://" + address + ":" + port), HighWatermark(50000))
+  val listenSocket : ActorRef = ZeroMQExtension(context.system).newRouterSocket(Array(Bind("tcp://" + address + ":" + port), Listener(self)))
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
 
   var routingInfo = new scala.collection.mutable.HashMap[K, V]

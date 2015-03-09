@@ -6,6 +6,6 @@ import akka.actor.Actor
 class ParrotActor extends Actor{
   override def receive: Receive = {
     case msg : String => {println(msg+msg+msg+"!"); sender ! msg+msg+msg+"!"}
-    case CheckAddress => sender ! AddressIsOk
+    case CheckAddress => sender	 ! AddressIsOk
   }
 }
