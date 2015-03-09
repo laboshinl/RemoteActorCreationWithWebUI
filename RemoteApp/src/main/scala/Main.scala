@@ -16,11 +16,7 @@ object Main extends App with MyBeautifulOutput{
 }
 
 class RemoteActorCreator extends Actor with MyBeautifulOutput {
-  val addresses = new StringBuilder
-  for (iface : NetworkInterface <- NetworkInterface.getNetworkInterfaces())
-    for (address : InetAddress <- iface.getInetAddresses)
-      addresses ++= address.getHostAddress + "\n"
-  println(addresses.mkString)
+  val address = NetworkInterface.getNetworkInterfaces.next.getInetAddresses.toList.get(1).getHostAddress
 
   import context.dispatcher
   val remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
@@ -36,6 +32,6 @@ class RemoteActorCreator extends Actor with MyBeautifulOutput {
       else sender ! NonexistentActorType
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }
     case Connected  => out("connected")
-    case TellYourIP => sender ! MyIPIs(addresses.mkString)
+    case TellYourIP => sender ! MyIPIs(address)
   }
 }
