@@ -13,6 +13,7 @@ import akka.actor._
 import akka.pattern.ask
 import spray.http._
 import MediaTypes._
+import language.postfixOps
 
 class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
   extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
