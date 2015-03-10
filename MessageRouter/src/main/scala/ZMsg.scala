@@ -1,9 +1,11 @@
 /**
  * Created by baka on 09.03.15.
  */
+package receiver.ZMsg
+
 import org.zeromq.ZMQ.Socket
 import org.zeromq.ZMQ
-import ZHelpers._
+import receiver.ZHelpers.ZHelpers._
 
 class ZMsg {
   type ZMsg = scala.collection.mutable.ListBuffer[Array[Byte]]

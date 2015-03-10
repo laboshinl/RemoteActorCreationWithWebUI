@@ -1,9 +1,11 @@
 /**
  * Created by baka on 09.03.15.
  */
+package receiver.ZHelpers
+
 import org.zeromq.ZMQ.Socket
-import org.zeromq.ZMQ
 import java.util.Random
+import receiver.ZMsg.ZMsg
 
 object ZHelpers {
 

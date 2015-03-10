@@ -2,11 +2,15 @@
  * Created by baka on 08.03.15.
  */
 
+package receiver.ReceiverActor
 import akka.actor._
 import akka.event.LoggingAdapter
 import akka.event.Logging
 import akka.zeromq._
-
+import akka.util.ByteString
+import scala.collection.mutable
+import akka.zeromq.ZMQMessage
+import receiver.MessagesOfReceiverActor._
 /**
  * simple stub of router actor now
  * it has socket for listening ZMQMessages (its my work)
@@ -15,33 +19,51 @@ import akka.zeromq._
  * @param port
  */
 
-class ReceiverActor[K, V](val address : String, val port : String) extends Actor with MessagesOfReceiverActor{
-  val listenSocket : ActorRef = ZeroMQExtension(context.system).newRouterSocket(Array(Bind("tcp://" + address + ":" + port), Listener(self)))
+class ReceiverActor(val address : String, val port : String) extends Actor with MessagesOfReceiverActor{
+  var uniquePort = port.toInt + 1
+  val zmqSystem = ZeroMQExtension(context.system)
+  val listenSocket : ActorRef = zmqSystem.newRouterSocket(Array(Bind("tcp://*:" + port), Listener(self)))
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
 
-  var routingInfo = new scala.collection.mutable.HashMap[K, V]
+  var routingAddresses = new mutable.HashMap[String, String]
+  var routingInfo = new mutable.HashMap[String, ActorRef]
 
   override def receive: Receive = {
-    case msg : ZMQMessage   => logger.debug("ZMQmessage received: " + msg.toString)
+    case msg : ZMQMessage   => {
+      /**
+       * Dummy implementation, only for test.
+       */
+      val id = msg.frame(1).decodeString("UTF-8")
+      logger.debug("ZMQmessage received from: " + id)
+      if (routingInfo.contains(id)) {
+        val publisher : ActorRef = routingInfo(id)
+        logger.debug("Get Publisher : " + publisher)
+        val m = ZMQMessage(ByteString(id), ByteString("payload"))
+        publisher ! m
+      }
+    }
     case msg : String       => logger.debug("Received string: " + msg); sender ! msg
 
     /**
      * Look here - generic types need to be matched like this.
      */
-    case msg if msg.isInstanceOf[SetMessage[K, V]] => {
-      val s = msg.asInstanceOf[SetMessage[K, V]]
-      routingInfo += ((s.Key, s.Value))
-      logger.debug("Received Set message: " + s.Key.toString + " " + s.Value.toString)
-      sender ! "ok" //erlang convention
+    case msg if msg.isInstanceOf[SetMessage] => {
+      val s = msg.asInstanceOf[SetMessage]
+      val bindString = "tcp://" + address + ":" + uniquePort.toString
+      routingAddresses += ((s.Key, bindString))
+      routingInfo += ((s.Key, zmqSystem.newPubSocket(Bind(bindString))))
+      uniquePort += 1
+      logger.debug("Received Set message: " + s.Key + " created PubSocket on: " + bindString)
+      sender ! bindString
     }
-    case msg if msg.isInstanceOf[GetMessage[K]]     => {
-      val g = msg.asInstanceOf[GetMessage[K]]
-      if (routingInfo.contains(g.Key)) {
-        logger.debug("Received Get message: " + g.Key.toString + ", returning: " + routingInfo(g.Key))
-        sender ! routingInfo(g.Key)
+    case msg if msg.isInstanceOf[GetMessage]     => {
+      val g = msg.asInstanceOf[GetMessage]
+      if (routingAddresses.contains(g.Key)) {
+        logger.debug("Received Get message: " + g.Key + ", returning: " + routingAddresses(g.Key))
+        sender ! routingAddresses(g.Key)
       }
       else {
-        logger.debug("Received Get message: " + g.Key.toString + ", no element with such key")
+        logger.debug("Received Get message: " + g.Key + ", no element with such key")
         sender ! NoElementWithSuchKey
       }
     }
