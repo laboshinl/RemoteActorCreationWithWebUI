@@ -5,12 +5,8 @@ package receiver.MessagesOfReceiverActor
 
 import java.io.Serializable
 
-trait MessagesOfReceiverActor {
 
-  case class GetMessage(val Key: String) extends Serializable
 
-  case class SetMessage(val Key: String) extends Serializable
-
-  case class NoElementWithSuchKey() extends Serializable
-
-}
+case class GetMessage(val Key: String) extends Serializable
+case class SetMessage(val Key: String) extends Serializable
+case class NoElementWithSuchKey() extends Serializable

@@ -16,7 +16,7 @@ import receiver.MessagesOfReceiverActor._
  */
 
 
-class TestReceiverActor extends FeatureSpec with GivenWhenThen with MessagesOfReceiverActor{
+class TestReceiverActor extends FeatureSpec with GivenWhenThen {
   implicit val timeout : akka.util.Timeout = akka.util.Timeout.durationToTimeout(2.minute)
   implicit val system = ActorSystem("TestSystem")
 

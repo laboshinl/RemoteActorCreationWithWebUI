@@ -19,7 +19,7 @@ import receiver.MessagesOfReceiverActor._
  * @param port
  */
 
-class ReceiverActor(val address : String, val port : String) extends Actor with MessagesOfReceiverActor{
+class ReceiverActor(val address : String, val port : String) extends Actor {
   var uniquePort = port.toInt + 1
   val zmqSystem = ZeroMQExtension(context.system)
   val listenSocket : ActorRef = zmqSystem.newRouterSocket(Array(Bind("tcp://*:" + port), Listener(self)))
