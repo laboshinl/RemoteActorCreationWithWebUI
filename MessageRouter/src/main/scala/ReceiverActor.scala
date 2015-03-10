@@ -44,30 +44,25 @@ class ReceiverActor(val address : String, val port : String) extends Actor with 
     }
     case msg : String       => logger.debug("Received string: " + msg); sender ! msg
 
-    /**
-     * Look here - generic types need to be matched like this.
-     */
-    case msg if msg.isInstanceOf[SetMessage] => {
-      val s = msg.asInstanceOf[SetMessage]
+    case msg : SetMessage => {
       val bindString = "tcp://" + address + ":" + uniquePort.toString
-      routingAddresses += ((s.Key, bindString))
-      routingInfo += ((s.Key, zmqSystem.newPubSocket(Bind(bindString))))
+      routingAddresses += ((msg.Key, bindString))
+      routingInfo += ((msg.Key, zmqSystem.newPubSocket(Bind(bindString))))
       uniquePort += 1
-      logger.debug("Received Set message: " + s.Key + " created PubSocket on: " + bindString)
+      logger.debug("Received Set message: " + msg.Key + " created PubSocket on: " + bindString)
       sender ! bindString
     }
-    case msg if msg.isInstanceOf[GetMessage]     => {
-      val g = msg.asInstanceOf[GetMessage]
-      if (routingAddresses.contains(g.Key)) {
-        logger.debug("Received Get message: " + g.Key + ", returning: " + routingAddresses(g.Key))
-        sender ! routingAddresses(g.Key)
+    case msg : GetMessage   => {
+      if (routingAddresses.contains(msg.Key)) {
+        logger.debug("Received Get message: " + msg.Key + ", returning: " + routingAddresses(msg.Key))
+        sender ! routingAddresses(msg.Key)
       }
       else {
-        logger.debug("Received Get message: " + g.Key + ", no element with such key")
+        logger.debug("Received Get message: " + msg.Key + ", no element with such key")
         sender ! NoElementWithSuchKey
       }
     }
-    case aNonMsg               => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
+    case aNonMsg   => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }
 
 }
