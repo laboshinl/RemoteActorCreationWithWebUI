@@ -5,10 +5,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.scalatest._
 import org.zeromq.ZMQ
-import receiver.ZHelpers.ZHelpers._
-import receiver.ZMsg.ZMsg
-import receiver.ReceiverActor.ReceiverActor
-import receiver.MessagesOfReceiverActor._
 
 
 /**

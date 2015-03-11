@@ -1,12 +1,10 @@
 /**
  * Created by baka on 09.03.15.
  */
-package receiver.ZMsg
 
 import org.zeromq.ZMQ.Socket
 import org.zeromq.ZMQ
-import receiver.ZHelpers.ZHelpers._
-
+import ZHelpers._
 class ZMsg {
   type ZMsg = scala.collection.mutable.ListBuffer[Array[Byte]]
   private val msgParts = scala.collection.mutable.ListBuffer[Array[Byte]]()

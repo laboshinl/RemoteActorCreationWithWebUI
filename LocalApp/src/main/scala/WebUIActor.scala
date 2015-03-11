@@ -23,7 +23,7 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
   override def receive = runRoute(route)
 
   implicit val timeout: Timeout = 1 minute // for the actor 'asks'
-
+  val routerProvider = context.actorSelection("/RoutersProvider")
   val json4sFormats = DefaultFormats
 
   var uniqueId : Long = 0

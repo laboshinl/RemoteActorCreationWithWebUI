@@ -2,15 +2,14 @@
  * Created by baka on 08.03.15.
  */
 
-package receiver.ReceiverActor
 import akka.actor._
 import akka.event.LoggingAdapter
 import akka.event.Logging
 import akka.zeromq._
 import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 import scala.collection.mutable
 import akka.zeromq.ZMQMessage
-import receiver.MessagesOfReceiverActor._
 /**
  * simple stub of router actor now
  * it has socket for listening ZMQMessages (its my work)
@@ -24,7 +23,8 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
   val zmqSystem = ZeroMQExtension(context.system)
   val listenSocket : ActorRef = zmqSystem.newRouterSocket(Array(Bind("tcp://*:" + port), Listener(self)))
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
-
+  val remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
+  remote ! ConnectionRequest
   var routingAddresses = new mutable.HashMap[String, String]
   var routingInfo = new mutable.HashMap[String, ActorRef]
 

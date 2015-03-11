@@ -14,7 +14,12 @@ class RouterActorsProvider extends Actor {
   var remoteRouters = new mutable.HashMap[Long, ActorRef]
   var routersLoad = new mutable.MutableList[(Long, Long)]
   var uniqueId = 0
-  implicit val timeout: Timeout = 1 minute // for the actor 'asks' 
+
+  @throws[Exception](classOf[Exception])
+  override def preStart(): Unit = logger.debug("Path : " + context.self.path.toString)
+
+  implicit val timeout: Timeout = 1 minute
+
   override def receive : Receive = {
     case ConnectionRequest                =>  {
       logger.debug("Connection request")
@@ -38,7 +43,7 @@ class RouterActorsProvider extends Actor {
         sender ! PairRegistered(clientStr, actorStr)
       }
     }
-
+    case msg => logger.debug("Unknown Message: " + msg.toString)
   }
 
 }
