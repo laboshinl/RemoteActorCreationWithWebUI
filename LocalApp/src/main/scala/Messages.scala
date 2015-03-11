@@ -29,3 +29,10 @@ case class TaskIdToJson(val id : String) extends Serializable
 
 case object TellYourIP
 case class MyIPIs (val IP : String)
+
+case class RegisterPair(val clientID : String, val actorID : String) extends Serializable
+case class PairRegistered(val clientStr : String, val actorStr : String)
+
+case class GetMessage(val Key: String) extends Serializable
+case class SetMessage(val Key: String) extends Serializable
+case class NoElementWithSuchKey() extends Serializable

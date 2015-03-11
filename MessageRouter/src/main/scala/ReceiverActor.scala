@@ -62,6 +62,7 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
         sender ! NoElementWithSuchKey
       }
     }
+    case Connected => logger.debug("Connected")
     case aNonMsg   => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }
 
