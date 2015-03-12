@@ -11,7 +11,7 @@ object Boot extends App with MyBeautifulOutput{
   val r = system.actorOf(Props[RemoteConnection], "Remoter")
   val o = system.actorOf(Props[OpenstackActor], "Openstack")
   val routerProvider = system.actorOf(Props[RouterActorsProvider], "RoutersProvider")
-  val webUi = system.actorOf(Props(classOf[WebUIActor], r, o), "WebUI")
+  val webUi = system.actorOf(Props(classOf[WebUIActor], r, o, routerProvider), "WebUI")
   val config = ConfigFactory.load()
   IO(Http) ! Http.Bind(webUi,
     interface = config.getString("my.own.spray-bind-ip"),

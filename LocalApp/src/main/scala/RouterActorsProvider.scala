@@ -14,7 +14,7 @@ class RouterActorsProvider extends Actor {
   // таблица с роутерами
   var remoteRouters = new mutable.HashMap[Long, ActorRef]
   // загрузка роутера (число обслуживаемых юзеров, роутер)
-  var routersLoad = new mutable.MutableList[(Long, Long)]
+  var routersLoad = new mutable.ArrayBuffer[(Long, Long)]
   var uniqueId = 0
 
   @throws[Exception](classOf[Exception])
@@ -46,16 +46,18 @@ class RouterActorsProvider extends Actor {
    * @param sender
    */
 
-  def onRegisterPairRequest(sender : ActorRef) = {
+  def onRegisterPairRequest(sender : ActorRef, pair : RegisterPair) = {
     logger.debug("Registering pair : " + pair.clientID + " " + pair.actorID)
     if (routersLoad.size > 0) {
       logger.debug("Routers Load before register: " + routersLoad.toString)
       //get router with minimum users
-      val routerId = routersLoad.head._2
+      val first = routersLoad.remove(0)
+      val routerId = first._2
+      val userCount = first._1
       //get router ref
       val router = remoteRouters(routerId)
       //adding user for router
-      routersLoad.head._1 += 1
+      routersLoad += ((userCount + 1, routerId))
       //sorting list
       routersLoad = routersLoad.sorted
       logger.debug("Routers Load after register: " + routersLoad.toString)
@@ -82,7 +84,7 @@ class RouterActorsProvider extends Actor {
      * need to test this method
       */
     case pair: RegisterPair  => {
-      onRegisterPairRequest(sender)
+      onRegisterPairRequest(sender, pair)
     }
     case msg => logger.debug("Unknown Message: " + msg.toString)
   }
