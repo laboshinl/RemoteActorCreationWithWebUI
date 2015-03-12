@@ -30,17 +30,28 @@ class RouterActorsProvider extends Actor {
       logger.debug("Sorted List : " + routersLoad.toString)
       sender ! Connected
     }
+
+    /**
+     * need to test this method
+      */
     case pair: RegisterPair  => {
       logger.debug("Registering pair : " + pair.clientID + " " + pair.actorID)
       if (routersLoad.size > 0) {
+        logger.debug("Routers Load before register: " + routersLoad.toString)
         val routerId = routersLoad.head._2
         val router = remoteRouters(routerId)
+        routersLoad.head._1 += 1
+        routersLoad = routersLoad.sorted
+        logger.debug("Routers Load after register: " + routersLoad.toString)
         val respForClient = Await.result((router ? SetMessage(pair.actorID)), 1 minute)
         val respForActor = Await.result((router ? SetMessage(pair.clientID)), 1 minute)
         val clientStr = respForClient.asInstanceOf[String]
         val actorStr = respForActor.asInstanceOf[String]
         logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
         sender ! PairRegistered(clientStr, actorStr)
+      } else {
+        logger.debug("No Routers connected")
+        sender ! NoRouters
       }
     }
     case msg => logger.debug("Unknown Message: " + msg.toString)

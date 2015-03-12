@@ -9,7 +9,7 @@ case class CreateNewActor(var actorType: String) extends Serializable
 case class ActorCreated(val adr: ActorRef) extends Serializable{
   override def toString = "ActorRef:"+adr
 }
-case object NonexistentActorType
+case object NonexistentActorType extends Serializable
 case object CheckAddress extends Serializable
 case object AddressIsOk extends Serializable
 case object StopSystem extends Serializable
@@ -27,11 +27,12 @@ case object NoMachineWithSuchId extends Serializable
 
 case class TaskIdToJson(val id : String) extends Serializable
 
-case object TellYourIP
-case class MyIPIs (val IP : String)
+case object TellYourIP extends Serializable
+case class MyIPIs (val IP : String) extends Serializable
 
 case class RegisterPair(val clientID : String, val actorID : String) extends Serializable
-case class PairRegistered(val clientStr : String, val actorStr : String)
+case class PairRegistered(val clientStr : String, val actorStr : String) extends Serializable
+case object NoRouters extends Serializable
 
 case class GetMessage(val Key: String) extends Serializable
 case class SetMessage(val Key: String) extends Serializable
