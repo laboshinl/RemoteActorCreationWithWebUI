@@ -4,7 +4,9 @@
 import java.io.Serializable
 
 
+@SerialVersionUID(25L)
 case object ConnectionRequest extends Serializable
+@SerialVersionUID(26L)
 case object Connected extends Serializable
 @SerialVersionUID(14L)
 case class AddPair(val clientId : String, val actorId : String)
