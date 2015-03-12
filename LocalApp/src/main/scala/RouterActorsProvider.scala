@@ -19,6 +19,7 @@ class RouterActorsProvider extends Actor {
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = logger.debug("Path : " + context.self.path.toString)
+  def getRouterCount : Int = routersLoad.size
 
   implicit val timeout: Timeout = 1 minute
 

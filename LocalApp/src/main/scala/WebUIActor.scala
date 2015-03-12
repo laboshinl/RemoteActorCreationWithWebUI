@@ -90,9 +90,11 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef, val 
         "}"
   //TODO: create connections on routers
   def createActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
-      Await.result(RemoterActor ? actorType, timeout.duration) match {
+    uniqueId += 1
+    val actorId = uniqueId.toString + "-actor"
+    val clientId = uniqueId.toString + "-client"
+    Await.result(RemoterActor ? CreateNewActor(actorType.actorType, actorId), timeout.duration) match {
       case res : ActorCreated =>
-        uniqueId += 1
         actors += ((uniqueId, res.asInstanceOf[ActorCreated].adr))
         HttpResponse(entity = HttpEntity(`text/html`,uniqueId.toString))
       case _ => HttpResponse(entity = HttpEntity(`text/html`,"Wrong type"))

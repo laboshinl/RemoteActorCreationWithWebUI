@@ -5,7 +5,7 @@ import akka.actor.ActorRef
 /**
  * Created by mentall on 13.02.15.
  */
-case class CreateNewActor(var actorType: String) extends Serializable
+case class CreateNewActor(var actorType: String, var actorId : String) extends Serializable
 case class ActorCreated(val adr: ActorRef) extends Serializable{
   override def toString = "ActorRef:"+adr
 }
@@ -17,7 +17,7 @@ case object ConnectionRequest extends Serializable
 case object Connected extends Serializable
 
 case class ActorIdAndMessageToJson(var id: String, var msg: String) extends Serializable
-case class ActorTypeToJson(val t : String) extends Serializable
+case class ActorTypeToJson(var actorType: String) extends Serializable
 case class ActorIdToJson(val id : String) extends Serializable
 
 case object StartMachine extends Serializable

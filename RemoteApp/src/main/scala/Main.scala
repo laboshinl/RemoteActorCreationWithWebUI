@@ -23,10 +23,11 @@ class RemoteActorCreator extends Actor with MyBeautifulOutput {
   remote ! ConnectionRequest
 
   override def receive = {
-    case CreateNewActor(t) =>
+    case CreateNewActor(t, id) =>
       out("Got request for new actor")
       if (t == "ParrotActor") {
         out("Creating parrotActor");
+        //TODO: create actor with id
         sender ! ActorCreated(context.system.actorOf(Props[ParrotActor]))
       }
       else sender ! NonexistentActorType
