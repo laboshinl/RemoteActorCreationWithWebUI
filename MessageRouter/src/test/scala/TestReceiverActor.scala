@@ -5,7 +5,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.scalatest._
 import org.zeromq.ZMQ
-
+import ZHelpers._
 
 /**
  * Created by mentall on 08.03.15.
