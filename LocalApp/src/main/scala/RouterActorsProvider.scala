@@ -68,6 +68,7 @@ class RouterActorsProvider extends Actor {
       val respForActor = Await.result((router ? SetMessage(pair.clientID)), 1 minute)
       val clientStr = respForClient.asInstanceOf[String]
       val actorStr = respForActor.asInstanceOf[String]
+      router ! AddPair(pair.clientID, pair.actorID)
       logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       sender ! PairRegistered(clientStr, actorStr)
@@ -86,22 +87,7 @@ class RouterActorsProvider extends Actor {
      * need to test this method
       */
     case pair: RegisterPair  => {
-<<<<<<< HEAD
-      logger.debug("Registering pair : " + pair.clientID + " " + pair.actorID)
-      if (routersLoad.size > 0) {
-        val routerId = routersLoad.head._2
-        val router = remoteRouters(routerId)
-        //This synchronous execution can be asynchronous if Future is used
-        val respForClient = Await.result((router ? SetMessage(pair.actorID)), 1 minute)
-        val respForActor = Await.result((router ? SetMessage(pair.clientID)), 1 minute)
-        val clientStr = respForClient.asInstanceOf[String]
-        val actorStr = respForActor.asInstanceOf[String]
-        logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
-        sender ! PairRegistered(clientStr, actorStr)
-      }
-=======
       onRegisterPairRequest(sender, pair)
->>>>>>> 1a0fc66275556339fd6b852cb859a844a2735722
     }
     case msg => logger.debug("Unknown Message: " + msg.toString)
   }

@@ -27,6 +27,7 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
   remote ! ConnectionRequest
   var routingAddresses = new mutable.HashMap[String, String]
   var routingInfo = new mutable.HashMap[String, ActorRef]
+  var routingPairs = new mutable.HashMap[String, String]
 
   override def receive: Receive = {
     case msg : ZMQMessage   => {
@@ -36,10 +37,10 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
       val id = msg.frame(1).decodeString("UTF-8")
       logger.debug("ZMQmessage received from: " + id)
       if (routingInfo.contains(id)) {
+        logger.debug("Sending to socket: ", routingAddresses(id))
         val publisher : ActorRef = routingInfo(id)
         logger.debug("Get Publisher : " + publisher)
-        val m = ZMQMessage(ByteString(id), ByteString("payload"))
-        publisher ! m
+        publisher ! msg
       }
     }
     case msg : String       => logger.debug("Received string: " + msg); sender ! msg
@@ -51,6 +52,11 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
       uniquePort += 1
       logger.debug("Received Set message: " + msg.Key + " created PubSocket on: " + bindString)
       sender ! bindString
+    }
+    case msg : AddPair      => {
+      routingPairs += ((msg.clientId, msg.actorId))
+      routingPairs += ((msg.actorId, msg.clientId))
+      logger.debug("Paired: " + (msg.actorId, msg.clientId).toString)
     }
     case msg : GetMessage   => {
       if (routingAddresses.contains(msg.Key)) {
