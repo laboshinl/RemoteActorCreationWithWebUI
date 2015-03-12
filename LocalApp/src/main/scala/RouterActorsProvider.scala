@@ -35,6 +35,7 @@ class RouterActorsProvider extends Actor {
       if (routersLoad.size > 0) {
         val routerId = routersLoad.head._2
         val router = remoteRouters(routerId)
+        //This synchronous execution can be asynchronous if Future is used
         val respForClient = Await.result((router ? SetMessage(pair.actorID)), 1 minute)
         val respForActor = Await.result((router ? SetMessage(pair.clientID)), 1 minute)
         val clientStr = respForClient.asInstanceOf[String]
