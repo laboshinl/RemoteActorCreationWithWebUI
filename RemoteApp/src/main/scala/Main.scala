@@ -23,11 +23,12 @@ class RemoteActorCreator extends Actor with MyBeautifulOutput {
   remote ! ConnectionRequest
 
   override def receive = {
-    case CreateNewActor(t) =>
+    case CreateNewActor(t, id, tcp) =>
       out("Got request for new actor")
       if (t == "ParrotActor") {
         out("Creating parrotActor");
-        sender ! ActorCreated(context.system.actorOf(Props[ParrotActor]))
+        //TODO: create actor with id
+        sender ! ActorCreated(context.system.actorOf(Props(classOf[ParrotActor], id, tcp)))
       }
       else sender ! NonexistentActorType
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }

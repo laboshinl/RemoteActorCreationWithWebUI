@@ -15,7 +15,7 @@ import spray.http._
 import MediaTypes._
 import language.postfixOps
 
-class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
+class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef, val RouterProvider : ActorRef)
   extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
 {
   implicit def executionContext : ExecutionContextExecutor = actorRefFactory.dispatcher
@@ -23,7 +23,6 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
   override def receive = runRoute(route)
 
   implicit val timeout: Timeout = 1 minute // for the actor 'asks'
-  val routerProvider = context.actorSelection("/RoutersProvider")
   val json4sFormats = DefaultFormats
 
   var uniqueId : Long = 0
@@ -90,13 +89,22 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef)
          "\"parrotActor\":\"Simple actor who respond with yours message\""+
         "}"
 
+  //TODO: create connections on routers
   def createActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
-      Await.result(RemoterActor ? actorType, timeout.duration) match {
-      case res : ActorCreated =>
-        uniqueId += 1
-        actors += ((uniqueId, res.asInstanceOf[ActorCreated].adr))
-        HttpResponse(entity = HttpEntity(`text/html`,uniqueId.toString))
-      case _ => HttpResponse(entity = HttpEntity(`text/html`,"Wrong type"))
+    out("Here")
+    uniqueId += 1
+    val actorId = uniqueId.toString + "-actor"
+    val clientId = uniqueId.toString + "-client"
+    Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
+      case res : PairRegistered =>
+        out("Here2")
+        Await.result(RemoterActor ? CreateNewActor(actorType.actorType, actorId, res.actorStr), timeout.duration) match {
+          case createRes : ActorCreated =>
+            actors += ((uniqueId, createRes.asInstanceOf[ActorCreated].adr))
+            HttpResponse(entity = HttpEntity(`text/html`, clientId.toString + " " + res.clientStr))
+          case NoRouters => HttpResponse(entity = HttpEntity(`text/html`, "No Routers"))
+        }
+      case _ => HttpResponse(entity = HttpEntity(`text/html`, "Wrong Type"))
     }
   }
 
