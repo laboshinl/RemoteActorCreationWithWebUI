@@ -62,6 +62,7 @@ class RouterActorsProvider extends Actor {
       //sorting list
       routersLoad = routersLoad.sorted
       logger.debug("Routers Load after register: " + routersLoad.toString)
+      logger.debug("Remote Router: " + router.toString)
       //register new id's on router
       val respForClient = Await.result((router ? SetMessage(pair.actorID)), 1 minute)
       val respForActor = Await.result((router ? SetMessage(pair.clientID)), 1 minute)
