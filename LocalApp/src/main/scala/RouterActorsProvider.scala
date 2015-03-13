@@ -64,14 +64,16 @@ class RouterActorsProvider extends Actor {
       logger.debug("Routers Load after register: " + routersLoad.toString)
       logger.debug("Remote Router: " + router.toString)
       //register new id's on router
-      val respForClient = Await.result((router ? SetMessage(pair.actorID)), 1 minute)
-      val respForActor = Await.result((router ? SetMessage(pair.clientID)), 1 minute)
+      val respForClient = Await.result((router ? SetMessage(pair.actorID)), timeout.duration)
+      val respForActor = Await.result((router ? SetMessage(pair.clientID)), timeout.duration)
+      val respForSendString = Await.result((router ? GetSendString), timeout.duration)
       val clientStr = respForClient.asInstanceOf[String]
       val actorStr = respForActor.asInstanceOf[String]
+      val connectString = respForSendString.asInstanceOf[String]
       router ! AddPair(pair.clientID, pair.actorID)
       logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
-      sender ! PairRegistered(clientStr, actorStr)
+      sender ! PairRegistered(clientStr, actorStr, connectString)
     } else {
       //если нет роутеров, то ничего не остаётся как послать клиента.
       logger.debug("No Routers connected")

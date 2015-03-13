@@ -98,10 +98,10 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef, val 
     Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
         out("Here2")
-        Await.result(RemoterActor ? CreateNewActor(actorType.actorType, actorId, res.actorStr), timeout.duration) match {
+        Await.result(RemoterActor ? CreateNewActor(actorType.actorType, actorId, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             actors += ((uniqueId, createRes.asInstanceOf[ActorCreated].adr))
-            HttpResponse(entity = HttpEntity(`text/html`, clientId.toString + " " + res.clientStr))
+            HttpResponse(entity = HttpEntity(`text/html`, clientId.toString + " " + res.clientSubStr + " " + res.sendString))
           case NoRouters => HttpResponse(entity = HttpEntity(`text/html`, "No Routers"))
         }
       case _ => HttpResponse(entity = HttpEntity(`text/html`, "Wrong Type"))

@@ -16,3 +16,5 @@ case class GetMessage(val Key: String) extends Serializable
 case class SetMessage(val Key: String) extends Serializable
 @SerialVersionUID(17L)
 case class NoElementWithSuchKey() extends Serializable
+@SerialVersionUID(123L)
+case class GetSendString() extends Serializable

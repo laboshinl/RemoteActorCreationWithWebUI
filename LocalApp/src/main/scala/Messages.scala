@@ -6,7 +6,7 @@ import akka.actor.ActorRef
  * Created by mentall on 13.02.15.
  */
 @SerialVersionUID(13L)
-case class CreateNewActor(var actorType: String, var actorId : String, var tcp : String) extends Serializable
+case class CreateNewActor(var actorType: String, var actorId : String, var subString : String, var sendString : String) extends Serializable
 @SerialVersionUID(12L)
 case class ActorCreated(val adr: ActorRef) extends Serializable{
   override def toString = "ActorRef:"+adr
@@ -50,7 +50,7 @@ case object NoMachineWithSuchId extends Serializable
 @SerialVersionUID(39L)
 case class RegisterPair(val clientID : String, val actorID : String) extends Serializable
 @SerialVersionUID(40L)
-case class PairRegistered(val clientStr : String, val actorStr : String) extends Serializable
+case class PairRegistered(val clientSubStr : String, val actorSubStr : String, val sendString : String) extends Serializable
 @SerialVersionUID(41L)
 case object NoRouters extends Serializable
 
@@ -62,3 +62,5 @@ case class GetMessage(val Key: String) extends Serializable
 case class SetMessage(val Key: String) extends Serializable
 @SerialVersionUID(17L)
 case class NoElementWithSuchKey() extends Serializable
+@SerialVersionUID(123L)
+case class GetSendString() extends Serializable

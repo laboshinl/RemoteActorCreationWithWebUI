@@ -8,7 +8,7 @@ import akka.event.Logging
 import akka.zeromq._
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import akka.zeromq.ZMQMessage
 /**
  * simple stub of router actor now
@@ -29,47 +29,59 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
   var routingInfo = new mutable.HashMap[String, ActorRef]
   var routingPairs = new mutable.HashMap[String, String]
 
-  override def receive: Receive = {
-    case msg : ZMQMessage   => {
-      /**
-       * Dummy implementation, only for test.
-       */
-      val id = msg.frame(1).decodeString("UTF-8")
-      logger.debug("ZMQmessage received from: " + id)
-      if (routingInfo.contains(id)) {
-        logger.debug("Sending to socket: ", routingAddresses(id))
-        val publisher : ActorRef = routingInfo(id)
-        logger.debug("Get Publisher : " + publisher)
-        publisher ! msg
-      }
+  def resendToReceiver(msg : ZMQMessage) : Unit = {
+    val id = msg.frame(1).decodeString("UTF-8")
+    logger.debug("ZMQmessage received from: " + id)
+    if (routingInfo.contains(id)) {
+      val receiverId = routingPairs(id)
+      logger.debug("Sending to socket: ", routingAddresses(id), " with topic: ", receiverId)
+      val publisher : ActorRef = routingInfo(id)
+      logger.debug("Get Publisher : " + publisher)
+      publisher ! ZMQMessage(immutable.Seq(ByteString(receiverId)) ++ msg.frames.drop(0))
+    } else {
+      logger.error("Can't find receiver for message: ", msg.toString)
     }
-    case msg : String       => logger.debug("Received string: " + msg); sender ! msg
+  }
 
-    case msg : SetMessage => {
-      val bindString = "tcp://" + address + ":" + uniquePort.toString
-      routingAddresses += ((msg.Key, bindString))
-      routingInfo += ((msg.Key, zmqSystem.newPubSocket(Bind(bindString))))
-      uniquePort += 1
-      logger.debug("Received Set message: " + msg.Key + " created PubSocket on: " + bindString)
-      sender ! bindString
+  def setNewUser(msg : SetMessage) : Unit = {
+    val bindString = "tcp://" + address + ":" + uniquePort.toString
+    routingAddresses += ((msg.Key, bindString))
+    routingInfo += ((msg.Key, zmqSystem.newPubSocket(Bind(bindString))))
+    uniquePort += 1
+    logger.debug("Received Set message: " + msg.Key + " created PubSocket on: " + bindString)
+    sender ! bindString
+  }
+
+  def getUserPublisherConnectionString(msg : GetMessage) : Unit = {
+    if (routingAddresses.contains(msg.Key)) {
+      logger.debug("Received Get message: " + msg.Key + ", returning: " + routingAddresses(msg.Key))
+      sender ! routingAddresses(msg.Key)
     }
-    case msg : AddPair      => {
-      routingPairs += ((msg.clientId, msg.actorId))
-      routingPairs += ((msg.actorId, msg.clientId))
-      logger.debug("Paired: " + (msg.actorId, msg.clientId).toString)
+    else {
+      logger.debug("Received Get message: " + msg.Key + ", no element with such key")
+      sender ! NoElementWithSuchKey
     }
-    case msg : GetMessage   => {
-      if (routingAddresses.contains(msg.Key)) {
-        logger.debug("Received Get message: " + msg.Key + ", returning: " + routingAddresses(msg.Key))
-        sender ! routingAddresses(msg.Key)
-      }
-      else {
-        logger.debug("Received Get message: " + msg.Key + ", no element with such key")
-        sender ! NoElementWithSuchKey
-      }
-    }
-    case Connected => logger.debug("Connected")
-    case aNonMsg   => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
+  }
+
+  def associateUsers(msg : AddPair) : Unit = {
+    routingPairs += ((msg.clientId, msg.actorId))
+    routingPairs += ((msg.actorId, msg.clientId))
+    logger.debug("Paired: " + (msg.actorId, msg.clientId).toString)
+  }
+
+  def getSendString : Unit = {
+    sender ! "tcp://" + address + ":" + port
+  }
+
+  override def receive: Receive = {
+    case msg : ZMQMessage   => resendToReceiver(msg)
+    case msg : SetMessage   => setNewUser(msg)
+    case msg : AddPair      => associateUsers(msg)
+    case msg : GetMessage   => getUserPublisherConnectionString(msg)
+    case GetSendString      => getSendString
+    case Connected          => logger.debug("Connected")
+    case msg : String       => logger.debug("Received string: " + msg); sender ! msg
+    case aNonMsg            => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }
 
 }
