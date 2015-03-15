@@ -43,12 +43,10 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
 
   //TODO: create connections on routers
   def createActorOnRemoteMachine (actorType : String) = {
-    out("Here")
     val actorId = uniqueActorId.toString + "-actor"
     val clientId = uniqueActorId.toString + "-client"
     Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
-        out("Here2")
         Await.result(RemoterActor ? CreateNewActor(actorType, actorId, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             idToActorsMap += ((uniqueActorId, createRes.asInstanceOf[ActorCreated].adr))
