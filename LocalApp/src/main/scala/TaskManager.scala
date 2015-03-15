@@ -19,8 +19,9 @@ class TaskManager extends Actor with MyBeautifulOutput{
       if (idToTasksMap.contains(taskId))
         if (idToTasksMap(taskId).isCompleted) {
           Await.result(idToTasksMap(taskId), 1 minute) match{
-            case compl   : TaskCompleted => sender ! TaskCompleted
-            case complId : TaskCompletedWithId => sender ! TaskCompletedWithId
+            case TaskCompleted => sender ! TaskCompleted
+            case t : TaskCompletedWithId => sender ! t
+            case NoSuchId => sender ! NoSuchId
             case msg : String => sender ! msg
             case _ => sender ! TaskFailed
           }
