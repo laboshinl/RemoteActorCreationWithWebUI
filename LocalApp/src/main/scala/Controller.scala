@@ -26,7 +26,7 @@ class Controller(val ActorManager     : ActorRef,
   }
 
   def planAction(task : Future[Any]) = {
-    val result = Await.result( TaskManager ? ManageTask( task ),timeout.duration )
+    val result = Await.result(TaskManager ? ManageTask(task),timeout.duration )
     if (!result.isInstanceOf[Long]) out("result of ManageTask is not an id : Long")
     sender ! result
   }
