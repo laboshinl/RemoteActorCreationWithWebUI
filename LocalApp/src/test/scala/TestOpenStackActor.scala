@@ -21,29 +21,29 @@ class TestOpenStackActor extends FeatureSpec with GivenWhenThen {
     scenario("Create and delete VM in OS") {
       implicit val system = ActorSystem("LocalSystem")
       implicit val timeout : Timeout = 2 minute
-      val osActor : ActorRef = system.actorOf(Props(new OpenstackActor))
-      When("Task was " + StartMachine)
+      val osActor : ActorRef = system.actorOf(Props(new OpenstackManager))
+      When("Task was " + MachineStart)
 
       /**
        * two machines starts here, but instances have the same names, i think its bad
        * P.S. it's cool to use bang for routing :)
        */
-      osActor ! StartMachine
-      val f = (osActor ? StartMachine)
+      osActor ! MachineStart
+      val f = (osActor ? MachineStart)
       val response = Await.result(f, 2 minute)
-      response.isInstanceOf[MachineTaskCompleted] match {
+      response.isInstanceOf[TaskCompletedWithId] match {
         case true => Then("All good, machine started, response: " + response)
         case _ => Then("All bad, se response: " + response); assert(false)
       }
-      val machineId = response.asInstanceOf[MachineTaskCompleted].id.toLong
-      When("Task was " + TerminateMachine)
-      val secondResponse = Await.result((osActor ? TerminateMachine(machineId)), 2 minute)
-      secondResponse.isInstanceOf[MachineTaskCompleted] match {
+      val machineId = response.asInstanceOf[TaskCompletedWithId].id.toLong
+      When("Task was " + MachineTermination)
+      val secondResponse = Await.result((osActor ? MachineTermination(machineId)), 2 minute)
+      secondResponse.isInstanceOf[TaskCompletedWithId] match {
         case true => Then("All good, machine stopped, response: " + secondResponse)
         case _ => Then("All bad, se response: " + secondResponse); assert(false)
       }
 
-
+      osActor ! MachineTermination(1)
     }
   }
 }

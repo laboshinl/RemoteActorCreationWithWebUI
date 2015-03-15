@@ -8,13 +8,21 @@ import spray.can.Http
  */
 object Boot extends App with MyBeautifulOutput{
   implicit val system = ActorSystem("LocalSystem")
-  val r = system.actorOf(Props[RemoteConnection], "Remoter")
-  val o = system.actorOf(Props[OpenstackActor], "Openstack")
-  val routerProvider = system.actorOf(Props[RouterActorsProvider], "RoutersProvider")
-  val webUi = system.actorOf(Props(classOf[WebUIActor], r, o, routerProvider), "WebUI")
+
+  val tm = system.actorOf(Props[TaskManager]                   , "TaskManager"    )
+  val r  = system.actorOf(Props[RemoteConnection]              , "Remoter"        )
+  val rp = system.actorOf(Props[RouterActorsProvider]          , "RoutersProvider")
+  val om = system.actorOf(Props(classOf[OpenstackManager]     ), "Openstack"      )
+  val am = system.actorOf(Props(classOf[ActorManager],rp, r   ), "ActorManager"   )
+  val c  = system.actorOf(Props(classOf[Controller],am, om, tm), "Controller"     )
+  val w  = system.actorOf(Props(classOf[WebUIActor],c , tm    ), "WebUI"          )
+
   val config = ConfigFactory.load()
-  IO(Http) ! Http.Bind(webUi,
+  IO(Http) ! Http.Bind(
+    w,
     interface = config.getString("my.own.spray-bind-ip"),
-    port = config.getInt("my.own.spray-bind-port"))
+    port = config.getInt("my.own.spray-bind-port")
+  )
+
   out("started")
 }

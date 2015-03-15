@@ -1,6 +1,6 @@
 import java.io.Serializable
-
 import akka.actor.ActorRef
+import scala.concurrent.Future
 
 /**
  * Created by mentall on 13.02.15.
@@ -29,23 +29,20 @@ case object TellYourIP extends Serializable
 @SerialVersionUID(28L)
 case class MyIPIs (val IP : String) extends Serializable
 
-@SerialVersionUID(31L)
+//types used in marshalling json
+@SerialVersionUID(78L)
 case class ActorIdAndMessageToJson(var id: String, var msg: String) extends Serializable
-@SerialVersionUID(32L)
 case class ActorTypeToJson(var actorType: String) extends Serializable
-@SerialVersionUID(33L)
-case class ActorIdToJson(val id : String) extends Serializable
-@SerialVersionUID(38L)
-case class TaskIdToJson(val id : String) extends Serializable
+case class IdToJson(val Id : String) extends Serializable
 
 @SerialVersionUID(34L)
-case object StartMachine extends Serializable
+case object PlanMachineStart extends Serializable
 @SerialVersionUID(35L)
-case class TerminateMachine(val id : Long) extends Serializable
-@SerialVersionUID(36L)
-case class MachineTaskCompleted(val id : String) extends Serializable
-@SerialVersionUID(37L)
-case object NoMachineWithSuchId extends Serializable
+case class PlanMachineTermination(val id : Long) extends Serializable
+@SerialVersionUID(84L)
+case object MachineStart extends Serializable
+@SerialVersionUID(85L)
+case class MachineTermination(val id : Long) extends Serializable
 
 @SerialVersionUID(39L)
 case class RegisterPair(val clientID : String, val actorID : String) extends Serializable
@@ -64,3 +61,28 @@ case class SetMessage(val Key: String) extends Serializable
 case class NoElementWithSuchKey() extends Serializable
 @SerialVersionUID(123L)
 case class GetSendString() extends Serializable
+
+@SerialVersionUID(71L)
+case class PlanActorCreation(actorType : String) extends Serializable
+@SerialVersionUID(72L)
+case class ManageTask(task : Future[Any]) extends Serializable
+@SerialVersionUID(73L)
+case class TaskStatus(taskId : Long) extends Serializable
+@SerialVersionUID(74L)
+case object TaskIncomplete extends Serializable
+@SerialVersionUID(75L)
+case object TaskFailed extends Serializable
+@SerialVersionUID(76L)
+case class TaskCompleted() extends Serializable
+@SerialVersionUID(77L)
+case object NoSuchId extends Serializable
+@SerialVersionUID(79L)
+case class SendMessageToActor(val id: Long, val msg: String) extends Serializable
+@SerialVersionUID(80L)
+case class PlanActorTermination(val id: Long) extends Serializable
+@SerialVersionUID(81L)
+case class TaskCompletedWithId(val id: Long) extends Serializable
+@SerialVersionUID(82L)
+case class ActorCreation(actorType : String) extends Serializable
+@SerialVersionUID(83L)
+case class ActorTermination(val id: Long) extends Serializable

@@ -1,4 +1,4 @@
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import com.typesafe.config.ConfigFactory
 import org.openstack4j.api.{Builders, OSClient}
 import org.openstack4j.model.compute.Server
@@ -7,7 +7,7 @@ import org.openstack4j.openstack.OSFactory
 /**
  * Created by mentall on 18.02.15.
  */
-class OpenstackActor extends Actor with MyBeautifulOutput{
+class OpenstackManager extends Actor with MyBeautifulOutput{
   val config = ConfigFactory.load()
 
   val os : OSClient = OSFactory.builder()
@@ -23,7 +23,7 @@ class OpenstackActor extends Actor with MyBeautifulOutput{
   var Servers = new scala.collection.mutable.HashMap[Long, Server]
 
   override def receive = {
-    case StartMachine => {
+    case MachineStart => {
       uniqueId += 1
       val svr = os.compute().servers().boot(Builders.server().
         availabilityZone(config.getString("my.own.openstack-availibility-zone")).
@@ -34,15 +34,15 @@ class OpenstackActor extends Actor with MyBeautifulOutput{
         networks(networks).build())
       Servers += ((uniqueId, svr))
       out("machine started")
-      sender ! MachineTaskCompleted(uniqueId.toString)
+      sender ! TaskCompletedWithId(uniqueId)
     }
-    case TerminateMachine(m) => {
+    case MachineTermination(m) => {
       if(Servers.contains(m)){
         println("terminate server "+m)
         os.compute().servers().delete(Servers(m).getId)
         Servers -= m
         out("machine terminated")
-        sender ! MachineTaskCompleted(m.toString)
+        sender ! TaskCompletedWithId(m)
       }
     }
     case msg : String => println(msg)

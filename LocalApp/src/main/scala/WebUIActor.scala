@@ -15,28 +15,24 @@ import spray.http._
 import MediaTypes._
 import language.postfixOps
 
-class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef, val RouterProvider : ActorRef)
+class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
   extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
 {
+  //Statements required by traits
   implicit def executionContext : ExecutionContextExecutor = actorRefFactory.dispatcher
   def actorRefFactory = context
+  implicit val timeout: Timeout = 1 minute
+  val json4sFormats = DefaultFormats
   override def receive = runRoute(route)
 
-  implicit val timeout: Timeout = 1 minute // for the actor 'asks'
-  val json4sFormats = DefaultFormats
-
-  var uniqueId : Long = 0
-  var uniqueTask : Long = 0
-  var actors = new scala.collection.mutable.HashMap[Long, ActorRef]
-  var tasks = new scala.collection.mutable.HashMap[Long, Future[Any]]
-
+  //This is the tree of all working routes that answer to user's requests
   lazy val route = {
     path(""){ get{ complete{ index }  }  }~
     path("actor"){
       get{ respondWithMediaType(`application/json`){ complete{  availableActors } } }~
       put{
         entity(as[ActorTypeToJson]) {
-          actorType => complete{ createActorOnRemoteMachine(actorType) }
+          actorType => complete{ planActorOnRemoteMachine(actorType) }
         }
       }~
       post{
@@ -45,16 +41,18 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef, val 
         }
       }~
       delete{
-        entity(as[ActorIdToJson]) {
-          ar => complete{ deleteActorOnRemoteMachine(ar) }
+        entity(as[IdToJson]) {
+          ar => complete{ planActorDeletion(ar) }
         }
       }
     }~
     path("system"){
       get{ complete{ index } }~
       put{ complete { planMachineCreation } }~
-      post{ entity(as[TaskIdToJson]) { ar => complete{ getTaskStatus(ar) } } }~
-      delete{ entity(as[TaskIdToJson]) { ar => complete { planMachineDeletion(ar) } } }
+      delete{ entity(as[IdToJson]) { ar => complete { planMachineDeletion(ar) } } }
+    }~
+    path("task"){
+      get{ entity(as[IdToJson]) { ar => complete{ getTaskStatus(ar) } } }
     }
   }
 
@@ -86,82 +84,56 @@ class WebUIActor(val RemoterActor : ActorRef, val OpenstackActor: ActorRef, val 
 
   val availableActors : String =
         "{ "+
-         "\"parrotActor\":\"Simple actor who respond with yours message\""+
+         "\"parrotActor\":\"Simple actor who responds with yours message\""+
         "}"
 
-  //TODO: create connections on routers
-  def createActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
-    out("Here")
-    uniqueId += 1
-    val actorId = uniqueId.toString + "-actor"
-    val clientId = uniqueId.toString + "-client"
-    Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
-      case res : PairRegistered =>
-        out("Here2")
-        Await.result(RemoterActor ? CreateNewActor(actorType.actorType, actorId, res.actorSubStr, res.sendString), timeout.duration) match {
-          case createRes : ActorCreated =>
-            actors += ((uniqueId, createRes.asInstanceOf[ActorCreated].adr))
-            HttpResponse(entity = HttpEntity(`text/html`, clientId.toString + " " + res.clientSubStr + " " + res.sendString))
-          case NoRouters => HttpResponse(entity = HttpEntity(`text/html`, "No Routers"))
-        }
-      case _ => HttpResponse(entity = HttpEntity(`text/html`, "Wrong Type"))
+  def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
+    Await.result(Controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
+      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`, "Actor creation is planned: " + id))
+      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
-  //TODO: Needs refactoring or deletion
+  def planActorDeletion(ar: IdToJson): ToResponseMarshallable = {
+    Await.result(Controller ? PlanActorTermination(ar.Id.toLong), timeout.duration)match {
+      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Actor termination is planned: " + id))
+      case NoSuchId   => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
+      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+    }
+  }
+
   def sendMessageToActorOnRemoteMachine(ar: ActorIdAndMessageToJson): ToResponseMarshallable = {
-    val target = actors(ar.id.toLong)
-    if (target == null) {
-      println("Got message, but actor is dead")
-      HttpResponse(entity = HttpEntity(`text/html`, "Got message, but actor is dead\n"))
-    }
-    else {
-      println("Got message \"" + ar.msg + "\" for actor " + target)
-      val res = Await.result(target ? ar.msg, timeout.duration)
-      println("Actor's response:" + res.toString)
-      HttpResponse(entity = HttpEntity(`text/html`, res.toString))
+    Await.result(Controller ? ar, timeout.duration) match {
+      case msg : String  => HttpResponse(entity = HttpEntity(`text/html`, msg))
+      case NoSuchId      => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
+      case _             => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
-  def deleteActorOnRemoteMachine(ar: ActorIdToJson): ToResponseMarshallable = {
-    if (actors.contains(ar.id.toLong)) {
-      actors(ar.id.toLong) ! PoisonPill
-      actors -= ar.id.toLong
-      HttpResponse(entity = HttpEntity(`text/html`, "PoisonPill sended to actor"))
+  def planMachineDeletion(ar: IdToJson): ToResponseMarshallable = {
+    Await.result(Controller ? PlanMachineTermination, timeout.duration) match {
+      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
+      case NoSuchId   => HttpResponse(entity = HttpEntity(`text/html`, "There is no vm with such id"))
+      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
-    else {
-      HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
-    }
-  }
-
-  def planMachineDeletion(ar: TaskIdToJson): ToResponseMarshallable = {
-    uniqueTask += 1
-    tasks += (( uniqueTask, OpenstackActor ? TerminateMachine(ar.id.toLong) ))
-    HttpResponse(entity = "Machine termination is planned: " + uniqueTask)
   }
 
   def planMachineCreation: ToResponseMarshallable = {
-    uniqueTask += 1
-    tasks += (( uniqueTask, OpenstackActor ? StartMachine ))
-    HttpResponse(entity = "Machine creation is planned: " + uniqueTask)
+    Await.result(Controller ? PlanMachineStart, timeout.duration)match {
+      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Machine creation is planned: " + id))
+      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+    }
   }
 
-  // TODO: MAY BE A PROBLEM WITH CREATION HERE
-  def getTaskStatus(ar: TaskIdToJson): ToResponseMarshallable = {
-    if (tasks.contains(ar.id.toLong)) {
-      if (tasks(ar.id.toLong).isCompleted) {
-          Await.result(tasks(ar.id.toLong), 1 minute) match{
-          case compl : MachineTaskCompleted => HttpResponse(entity = HttpEntity(`text/html`, "Task completed:"
-            + compl.asInstanceOf[MachineTaskCompleted].id.toString))
-          case _ => HttpResponse(entity = HttpEntity(`text/html`, "MachineTaskCompleted expected, got something else"))
-        }
-      }
-      else {
-        HttpResponse(entity = HttpEntity(`text/html`, "Task incomplete"))
-      }
-    }
-    else {
-      HttpResponse(entity = HttpEntity(`text/html`, "There is no task with such id"))
+  def getTaskStatus(ar: IdToJson): ToResponseMarshallable = {
+    Await.result(TaskManager ? TaskStatus(ar.Id.toLong), timeout.duration) match{
+      case TaskCompleted           => HttpResponse(entity = HttpEntity(`text/html`, "Task completed"))
+      case TaskCompletedWithId(id) => HttpResponse(entity = HttpEntity(`text/html`, "Task completed, id:"+id.toString))
+      case TaskFailed              => HttpResponse(entity = HttpEntity(`text/html`, "Task failed"))
+      case TaskIncomplete          => HttpResponse(entity = HttpEntity(`text/html`, "Task not ready yet"))
+      case NoSuchId                => HttpResponse(entity = HttpEntity(`text/html`, "There is no task with such id"))
+      case msg: String             => HttpResponse(entity = HttpEntity(`text/html`, msg))
+      case _                       => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 }
