@@ -9,10 +9,10 @@ import akka.pattern.ask
 /**
  * Created by baka on 11.03.15.
  */
-class RouterActorsProvider extends Actor {
+class RouterManager extends Actor {
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
   // таблица с роутерами
-  var remoteRouters = new mutable.HashMap[Long, ActorRef]
+  var remoteRoutersMap = new mutable.HashMap[Long, ActorRef]
   // загрузка роутера (число обслуживаемых юзеров, роутер)
   var routersLoad = new mutable.ArrayBuffer[(Long, Long)]
   var uniqueId = 0
@@ -33,7 +33,7 @@ class RouterActorsProvider extends Actor {
   def onRouterConnectionRequest(sender: ActorRef) = {
     logger.info("Connection request")
     uniqueId += 1
-    remoteRouters += ((uniqueId, sender))
+    remoteRoutersMap += ((uniqueId, sender))
     routersLoad += ((0, uniqueId))
     routersLoad = routersLoad.sorted
     logger.debug("Sorted List : " + routersLoad.toString)
@@ -54,11 +54,11 @@ class RouterActorsProvider extends Actor {
       //get router with minimum users
       val first = routersLoad.remove(0)
       val routerId = first._2
-      val userCount = first._1
+      val usersAmount = first._1
       //get router ref
-      val router = remoteRouters(routerId)
+      val router = remoteRoutersMap(routerId)
       //adding user for router
-      routersLoad += ((userCount + 1, routerId))
+      routersLoad += ((usersAmount + 1, routerId))
       //sorting list
       routersLoad = routersLoad.sorted
       logger.debug("Routers Load after register: " + routersLoad.toString)

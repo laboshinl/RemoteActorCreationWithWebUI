@@ -1,5 +1,4 @@
 import akka.actor.{PoisonPill, ActorRef, Actor}
-import akka.actor.Actor.Receive
 import akka.event.Logging
 import scala.concurrent.duration._
 import akka.pattern.ask
