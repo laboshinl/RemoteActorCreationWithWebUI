@@ -90,7 +90,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
 
   def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
     Await.result(Controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
-      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`, "Actor creation is planned: " + id))
+      case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Actor creation is planned: " + id))
       case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }

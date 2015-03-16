@@ -12,7 +12,7 @@ object Boot extends App {
   val logger = Logging.getLogger(system, this)
   val tm = system.actorOf(Props[TaskManager]                   , "TaskManager"    )
   val r  = system.actorOf(Props[RemoteConnection]              , "Remoter"        )
-  val rp = system.actorOf(Props[RouterManager]                 , "RouterManager"  )
+  val rp = system.actorOf(Props[RouterManager]                 , "RoutersProvider")
   val om = system.actorOf(Props(classOf[OpenstackManager]     ), "Openstack"      )
   val am = system.actorOf(Props(classOf[ActorManager],rp, r   ), "ActorManager"   )
   val c  = system.actorOf(Props(classOf[Controller],am, om, tm), "Controller"     )
