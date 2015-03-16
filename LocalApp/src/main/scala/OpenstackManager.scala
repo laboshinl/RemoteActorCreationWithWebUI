@@ -20,22 +20,21 @@ class OpenstackManager extends Actor {
 
   val networks : java.util.List[String] = new java.util.LinkedList()
   networks.add(   config.getString("my.own.openstack-network")  )
-  var uniqueId : Long = 0
-  var Servers = new scala.collection.mutable.HashMap[Long, Server]
+  var Servers = new scala.collection.mutable.HashMap[String, Server]
 
   override def receive = {
     case MachineStart => {
-      uniqueId += 1
+      val vmId = java.util.UUID.randomUUID.toString
       val svr = os.compute().servers().boot(Builders.server().
         availabilityZone(config.getString("my.own.openstack-availibility-zone")).
-        name("actors-handler-" + uniqueId).
+        name("actors-handler-" + vmId).
         flavor     ( config.getString("my.own.openstack-flavour")  ).
         image      ( config.getString("my.own.openstack-image")    ).
         keypairName( config.getString("my.own.openstack-key-pair") ).
         networks(networks).build())
-      Servers += ((uniqueId, svr))
+      Servers += ((vmId, svr))
       logger.info("Open Stack Machine started...")
-      sender ! TaskCompletedWithId(uniqueId)
+      sender ! TaskCompletedWithId(vmId)
     }
     case MachineTermination(m) => {
       if(Servers.contains(m)){

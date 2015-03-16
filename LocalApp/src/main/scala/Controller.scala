@@ -21,7 +21,7 @@ class Controller(val ActorManager     : ActorRef,
     case PlanActorCreation(actorType)     => planAction(ActorManager ? ActorCreation (actorType))
     case PlanActorTermination(actorId)    => planAction(ActorManager ? ActorTermination(actorId))
     // This is not planning but direct request of String answer
-    case ActorIdAndMessageToJson(id, msg) => sender ! Await.result(ActorManager ? SendMessageToActor(id.toLong, msg), timeout.duration)
+    case ActorIdAndMessageToJson(id, msg) => sender ! Await.result(ActorManager ? SendMessageToActor(id, msg), timeout.duration)
 
     case PlanMachineStart             => planAction(OpenstackManager ? MachineStart)
     case PlanMachineTermination(vmId) => planAction(OpenstackManager ? MachineTermination(vmId))
@@ -29,7 +29,7 @@ class Controller(val ActorManager     : ActorRef,
 
   def planAction(task : Future[Any]) = {
     val result = Await.result(TaskManager ? ManageTask(task),timeout.duration )
-    if (!result.isInstanceOf[Long]) logger.error("result of ManageTask is not an id : Long")
+    if (!result.isInstanceOf[String]) logger.error("result of ManageTask is not an id : Long")
     sender ! result
   }
 

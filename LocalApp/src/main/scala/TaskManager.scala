@@ -8,13 +8,10 @@ import scala.concurrent.{Await, Future}
  * Created by mentall on 15.03.15.
  */
 class TaskManager extends Actor {
-  var _uniqueTaskId  : Long = 0
-  def uniqueTaskId   : Long = { _uniqueTaskId  += 1; _uniqueTaskId  }
-
-  var idToTasksMap = new scala.collection.mutable.HashMap[Long, Future[Any]]
+  var idToTasksMap = new scala.collection.mutable.HashMap[String, Future[Any]]
 
   override def receive: Receive = {
-    case ManageTask(future) => {val id = uniqueTaskId; idToTasksMap += (( id, future)); sender ! id }
+    case ManageTask(future) => {val id = java.util.UUID.randomUUID.toString; idToTasksMap += (( id, future)); sender ! id }
     case TaskStatus(taskId) =>
       if (idToTasksMap.contains(taskId))
         if (idToTasksMap(taskId).isCompleted) {

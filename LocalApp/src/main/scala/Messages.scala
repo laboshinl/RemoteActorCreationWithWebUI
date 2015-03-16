@@ -38,14 +38,14 @@ case class IdToJson(val Id : String) extends Serializable
 @SerialVersionUID(34L)
 case object PlanMachineStart extends Serializable
 @SerialVersionUID(35L)
-case class PlanMachineTermination(val id : Long) extends Serializable
+case class PlanMachineTermination(val vmId : String) extends Serializable
 @SerialVersionUID(84L)
 case object MachineStart extends Serializable
 @SerialVersionUID(85L)
-case class MachineTermination(val id : Long) extends Serializable
+case class MachineTermination(val vmId : String) extends Serializable
 
 @SerialVersionUID(39L)
-case class RegisterPair(val clientID : String, val actorID : String) extends Serializable
+case class RegisterPair(val clientId : String, val actorId : String) extends Serializable
 @SerialVersionUID(40L)
 case class PairRegistered(val clientSubStr : String, val actorSubStr : String, val sendString : String) extends Serializable
 @SerialVersionUID(41L)
@@ -67,7 +67,7 @@ case class PlanActorCreation(actorType : String) extends Serializable
 @SerialVersionUID(72L)
 case class ManageTask(task : Future[Any]) extends Serializable
 @SerialVersionUID(73L)
-case class TaskStatus(taskId : Long) extends Serializable
+case class TaskStatus(taskId : String) extends Serializable
 @SerialVersionUID(74L)
 case object TaskIncomplete extends Serializable
 @SerialVersionUID(75L)
@@ -77,12 +77,12 @@ case class TaskCompleted() extends Serializable
 @SerialVersionUID(77L)
 case object NoSuchId extends Serializable
 @SerialVersionUID(79L)
-case class SendMessageToActor(val id: Long, val msg: String) extends Serializable
+case class SendMessageToActor(val actorId: String, val msg: String) extends Serializable
 @SerialVersionUID(80L)
-case class PlanActorTermination(val id: Long) extends Serializable
+case class PlanActorTermination(val actorId: String) extends Serializable
 @SerialVersionUID(81L)
-case class TaskCompletedWithId(val id: Long) extends Serializable
+case class TaskCompletedWithId(val id: String) extends Serializable
 @SerialVersionUID(82L)
 case class ActorCreation(actorType : String) extends Serializable
 @SerialVersionUID(83L)
-case class ActorTermination(val id: Long) extends Serializable
+case class ActorTermination(val actorId: String) extends Serializable

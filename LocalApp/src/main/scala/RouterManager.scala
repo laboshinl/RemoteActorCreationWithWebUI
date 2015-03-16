@@ -30,7 +30,7 @@ class RouterManager extends Actor {
    * @param sender
    */
 
-  def onRouterConnectionRequest(sender: ActorRef) = {
+  def connectRouter(sender: ActorRef) = {
     logger.info("Connection request")
     uniqueId += 1
     remoteRoutersMap += ((uniqueId, sender))
@@ -47,8 +47,8 @@ class RouterManager extends Actor {
    * @param sender
    */
 
-  def onRegisterPairRequest(sender : ActorRef, pair : RegisterPair) = {
-    logger.debug("Registering pair : " + pair.clientID + " " + pair.actorID)
+  def registerPair(sender : ActorRef, pair : RegisterPair) = {
+    logger.debug("Registering pair : " + pair.clientId + " " + pair.actorId)
     if (routersLoad.size > 0) {
       logger.debug("Routers Load before register: " + routersLoad.toString)
       //get router with minimum users
@@ -64,13 +64,13 @@ class RouterManager extends Actor {
       logger.debug("Routers Load after register: " + routersLoad.toString)
       logger.debug("Remote Router: " + router.toString)
       //register new id's on router
-      val respForClient = Await.result((router ? SetMessage(pair.actorID)), timeout.duration)
-      val respForActor = Await.result((router ? SetMessage(pair.clientID)), timeout.duration)
+      val respForClient = Await.result((router ? SetMessage(pair.actorId)), timeout.duration)
+      val respForActor = Await.result((router ? SetMessage(pair.clientId)), timeout.duration)
       val respForSendString = Await.result((router ? GetSendString), timeout.duration)
       val clientStr = respForClient.asInstanceOf[String]
       val actorStr = respForActor.asInstanceOf[String]
       val connectString = respForSendString.asInstanceOf[String]
-      router ! AddPair(pair.clientID, pair.actorID)
+      router ! AddPair(pair.clientId, pair.actorId)
       logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       sender ! PairRegistered(clientStr, actorStr, connectString)
@@ -83,10 +83,10 @@ class RouterManager extends Actor {
 
   override def receive : Receive = {
     case ConnectionRequest                =>  {
-      onRouterConnectionRequest(sender)
+      connectRouter(sender)
     }
     case pair: RegisterPair  => {
-      onRegisterPairRequest(sender, pair)
+      registerPair(sender, pair)
     }
     //TODO: remove pair request!
     case msg => logger.debug("Unknown Message: " + msg.toString)
