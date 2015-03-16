@@ -7,7 +7,7 @@ import scala.concurrent.{Await, Future}
 /**
  * Created by mentall on 15.03.15.
  */
-class TaskManager extends Actor with MyBeautifulOutput{
+class TaskManager extends Actor {
   var _uniqueTaskId  : Long = 0
   def uniqueTaskId   : Long = { _uniqueTaskId  += 1; _uniqueTaskId  }
 

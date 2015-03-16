@@ -10,13 +10,7 @@ import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import scala.collection.{immutable, mutable}
 import akka.zeromq.ZMQMessage
-/**
- * simple stub of router actor now
- * it has socket for listening ZMQMessages (its my work)
- * and it must have routing info as <KeyType, ValueType> (its u work)
- * @param address
- * @param port
- */
+
 
 class ReceiverActor(val address : String, val port : String) extends Actor {
   var uniquePort = port.toInt + 1
@@ -37,7 +31,8 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
       logger.debug("Sending to socket: ", routingAddresses(id), " with topic: ", receiverId)
       val publisher : ActorRef = routingInfo(id)
       logger.debug("Get Publisher : " + publisher)
-      publisher ! ZMQMessage(immutable.Seq(ByteString(receiverId)) ++ msg.frames.drop(0))
+      val zmqmsg = ZMQMessage(immutable.Seq(ByteString(receiverId)) ++ msg.frames.drop(2))
+      publisher ! zmqmsg
     } else {
       logger.error("Can't find receiver for message: ", msg.toString)
     }
@@ -74,12 +69,13 @@ class ReceiverActor(val address : String, val port : String) extends Actor {
   }
 
   override def receive: Receive = {
+    //TODO: remove client
     case msg : ZMQMessage   => resendToReceiver(msg)
     case msg : SetMessage   => setNewUser(msg)
     case msg : AddPair      => associateUsers(msg)
     case msg : GetMessage   => getUserPublisherConnectionString(msg)
     case GetSendString      => getSendString
-    case Connected          => logger.debug("Connected")
+    case Connected          => logger.info("Connected to main actor system...")
     case msg : String       => logger.debug("Received string: " + msg); sender ! msg
     case aNonMsg            => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }

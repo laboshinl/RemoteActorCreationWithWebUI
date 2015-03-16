@@ -1,4 +1,5 @@
 import akka.actor.{Props, ActorSystem}
+import akka.event.Logging
 import akka.io.IO
 import com.typesafe.config.ConfigFactory
 import spray.can.Http
@@ -6,9 +7,9 @@ import spray.can.Http
 /**
  * Created by mentall on 12.02.15.
  */
-object Boot extends App with MyBeautifulOutput{
+object Boot extends App {
   implicit val system = ActorSystem("LocalSystem")
-
+  val logger = Logging.getLogger(system, this)
   val tm = system.actorOf(Props[TaskManager]                   , "TaskManager"    )
   val r  = system.actorOf(Props[RemoteConnection]              , "Remoter"        )
   val rp = system.actorOf(Props[RouterActorsProvider]          , "RoutersProvider")
@@ -23,6 +24,5 @@ object Boot extends App with MyBeautifulOutput{
     interface = config.getString("my.own.spray-bind-ip"),
     port = config.getInt("my.own.spray-bind-port")
   )
-
-  out("started")
+  logger.info("System started...")
 }

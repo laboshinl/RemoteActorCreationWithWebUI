@@ -1,4 +1,5 @@
 import akka.actor.{ActorRef, Actor}
+import akka.event.Logging
 import akka.util.ByteString
 import akka.zeromq._
 
@@ -7,18 +8,31 @@ import scala.collection.immutable
 /**
  * Created by mentall on 13.02.15.
  */
-class ParrotActor(id : String, subString : String, sendString : String) extends Actor with MyBeautifulOutput{
-
+class ParrotActor(id : String, subString : String, sendString : String) extends Actor {
+  val logger = Logging.getLogger(context.system, this)
   val subSocket = ZeroMQExtension(context.system).newSubSocket(Connect(subString), Listener(self), Subscribe(id))
   val sendSocket  = ZeroMQExtension(context.system).newDealerSocket(Array(Connect(sendString), Listener(self)))
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
-    out("Parrot Actor created: " + id + " With subString: " + subString + " and sendString: " + sendString)
+    logger.debug("Parrot Actor created: " + id + " With subString: " + subString + " and sendString: " + sendString)
   }
 
   override def receive: Receive = {
-    case msg : ZMQMessage => sender ! ZMQMessage(immutable.Seq(ByteString(id), ByteString("I'm parrot!")) ++ msg.frames.drop(0))
-    case msg : String => {println(msg+msg+msg+"!"); sender ! msg+msg+msg+"!"}
+    //TODO: let me die, please.
+    case msg : ZMQMessage => {
+      logger.debug("Received ZMQ msg: " + msg)
+      val payload = msg.frames.drop(1).foldLeft("")((ls : String, rs : ByteString) => ls + rs.decodeString("UTF-8"))
+      logger.debug("Message payload: " + payload)
+      val reply = if (msg.frames.size > 1)
+        ZMQMessage(immutable.Seq(msg.frame(0), msg.frame(1), msg.frame(1), msg.frame(1)))
+      else
+        ZMQMessage(immutable.Seq(msg.frame(0), ByteString("Empty Payload".getBytes)))
+      sendSocket ! reply
+    }
+    case msg : String => {
+      logger.debug("Received akka msg: " + msg)
+      sender ! msg + msg + msg + "!"
+    }
     case CheckAddress => sender	 ! AddressIsOk
   }
 }

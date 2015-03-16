@@ -1,5 +1,6 @@
 import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.actor.Actor.Receive
+import akka.event.Logging
 import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
@@ -9,11 +10,13 @@ import scala.concurrent.Await
 /**
  * Created by mentall on 15.03.15.
  */
-class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) extends Actor with MyBeautifulOutput{
+class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) extends Actor {
   implicit val timeout: Timeout = 1 minute
-
-  var _uniqueActorId : Long = 0
-  def uniqueActorId  : Long = { _uniqueActorId += 1; _uniqueActorId }
+  var logger = Logging.getLogger(context.system, self)
+  var uniqueActorId : Long = 0
+  // WHAT??????
+  // I need to have ONE ID FOR PAIR.
+  // def uniqueActorId  : Long = { _uniqueActorId += 1; _uniqueActorId }
 
   var idToActorsMap = new scala.collection.mutable.HashMap[Long, ActorRef]
 
@@ -27,7 +30,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     if (idToActorsMap.contains(id)){
       val res = Await.result(idToActorsMap(id) ? msg, timeout.duration)
       if (res.isInstanceOf[String]) sender ! res.toString
-      else out("Actor's response in not string"); sender ! "Actor's response in not string"
+      else logger.debug("Actor's response in not string"); sender ! "Actor's response in not string"
     }
     else sender ! NoSuchId
   }
@@ -41,21 +44,28 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     else sender ! NoSuchId
   }
 
-  //TODO: create connections on routers
   def createActorOnRemoteMachine (actorType : String) = {
-    out("Here")
     val actorId = uniqueActorId.toString + "-actor"
     val clientId = uniqueActorId.toString + "-client"
+    logger.debug("Create Actor for client: " + clientId)
     Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
-        out("Here2")
+        logger.debug("Pair registred on Router")
         Await.result(RemoterActor ? CreateNewActor(actorType, actorId, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
+            logger.debug("Actor created!")
             idToActorsMap += ((uniqueActorId, createRes.asInstanceOf[ActorCreated].adr))
             sender ! (clientId.toString + " " + res.clientSubStr + " " + res.sendString)
-          case NoRouters => sender ! "No Routers"
+          case NonexistentActorType => {
+            logger.error("Error: Wrong Actor Type")
+            sender ! "Error: Wrong Actor Type"
+          }
         }
-      case _ => sender ! "Wrong Type"
+      case NoRouters =>{
+        logger.error("Error: No Routers")
+        sender ! "Error: No Routers"
+      }
     }
+    uniqueActorId += 1
   }
 }

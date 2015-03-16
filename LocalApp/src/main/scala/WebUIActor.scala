@@ -16,7 +16,7 @@ import MediaTypes._
 import language.postfixOps
 
 class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
-  extends HttpService with Json4sSupport with Actor with MyBeautifulOutput
+  extends HttpService with Json4sSupport with Actor
 {
   //Statements required by traits
   implicit def executionContext : ExecutionContextExecutor = actorRefFactory.dispatcher
@@ -27,6 +27,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
 
   //This is the tree of all working routes that answer to user's requests
   lazy val route = {
+    //TODO: create DISCONNECT request from client
     path(""){ get{ complete{ index }  }  }~
     path("actor"){
       get{ respondWithMediaType(`application/json`){ complete{  availableActors } } }~

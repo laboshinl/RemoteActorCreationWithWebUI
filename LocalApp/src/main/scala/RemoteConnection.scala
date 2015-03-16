@@ -1,4 +1,5 @@
 import akka.actor.{ActorRef, Actor}
+import akka.event.Logging
 
 /**
  * Created by mentall on 12.02.15.
@@ -7,33 +8,34 @@ import akka.actor.{ActorRef, Actor}
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
-class RemoteConnection extends Actor with MyBeautifulOutput{
+class RemoteConnection extends Actor {
   var waiter : ActorRef = null
-
+  val logger = Logging.getLogger(context.system, self)
   var remoteSystems = new scala.collection.mutable.HashMap[Long, ActorRef]
   var uniqueId : Long = 0
 
-  out("Remoter started")
+  logger.info("Remoter started")
 
   def remote : ActorRef = {
     // Please, make u code breath. Please :-[
     val r = scala.util.Random.nextInt(remoteSystems.size) + 1
-    println("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
+    logger.debug("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
     remoteSystems(r)
   }
 
   override def receive: Receive = {
-    case CreateNewActor(t, id, subString, sendString)   =>  {out("Got request on creation"); waiter = sender; remote ! CreateNewActor(t, id, subString, sendString)}
-    case ActorCreated(adr)                              =>  {out("Checking address"); adr ! CheckAddress}
-    case NonexistentActorType                           =>  {out("Nonexsistent actor type"); waiter ! NonexistentActorType}
-    case AddressIsOk                                    =>  {out("Address is ok"); waiter ! ActorCreated(sender)}
-    case StopSystem                                     =>  {out("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
+    //TODO:remove actor with id...
+    case CreateNewActor(t, id, subString, sendString)   =>  {logger.debug("Got request on creation"); waiter = sender; remote ! CreateNewActor(t, id, subString, sendString)}
+    case ActorCreated(adr)                              =>  {logger.debug("Checking address"); adr ! CheckAddress}
+    case NonexistentActorType                           =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
+    case AddressIsOk                                    =>  {logger.debug("Address is ok"); waiter ! ActorCreated(sender)}
+    case StopSystem                                     =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
     case ConnectionRequest                              =>  {
-      out("Connection request")
-      uniqueId += 1;
+      logger.info("Connection request")
+      uniqueId += 1
       remoteSystems += ((uniqueId, sender))
       sender!Connected; sender ! TellYourIP
     }
-    case MyIPIs(ip)                                     =>  {out(ip)}
+    case MyIPIs(ip)                                     =>  {logger.debug(ip)}
   }
 }

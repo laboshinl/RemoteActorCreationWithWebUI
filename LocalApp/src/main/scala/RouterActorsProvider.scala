@@ -31,7 +31,7 @@ class RouterActorsProvider extends Actor {
    */
 
   def onRouterConnectionRequest(sender: ActorRef) = {
-    logger.debug("Connection request")
+    logger.info("Connection request")
     uniqueId += 1
     remoteRouters += ((uniqueId, sender))
     routersLoad += ((0, uniqueId))
@@ -85,12 +85,10 @@ class RouterActorsProvider extends Actor {
     case ConnectionRequest                =>  {
       onRouterConnectionRequest(sender)
     }
-    /**
-     * need to test this method
-      */
     case pair: RegisterPair  => {
       onRegisterPairRequest(sender, pair)
     }
+    //TODO: remove pair request!
     case msg => logger.debug("Unknown Message: " + msg.toString)
   }
 

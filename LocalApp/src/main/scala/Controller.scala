@@ -1,4 +1,5 @@
 import akka.actor.{ActorRef, Actor}
+import akka.event.Logging
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -10,10 +11,11 @@ import akka.pattern.ask
 class Controller(val ActorManager     : ActorRef,
                  val OpenstackManager : ActorRef,
                  val TaskManager      : ActorRef)
-  extends Actor with MyBeautifulOutput
+  extends Actor
 {
 
   implicit val timeout: Timeout = 1 minute
+  val logger = Logging.getLogger(context.system, this)
 
   override def receive: Receive = {
     case PlanActorCreation(actorType)     => planAction(ActorManager ? ActorCreation (actorType))
@@ -27,7 +29,7 @@ class Controller(val ActorManager     : ActorRef,
 
   def planAction(task : Future[Any]) = {
     val result = Await.result(TaskManager ? ManageTask(task),timeout.duration )
-    if (!result.isInstanceOf[Long]) out("result of ManageTask is not an id : Long")
+    if (!result.isInstanceOf[Long]) logger.error("result of ManageTask is not an id : Long")
     sender ! result
   }
 

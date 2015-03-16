@@ -5,34 +5,39 @@
 import java.net.{InetAddress, NetworkInterface}
 
 import akka.actor._
+import akka.event.Logging
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
 
-object Main extends App with MyBeautifulOutput{
+object Main extends App {
+
   val system = ActorSystem("HelloRemoteSystem")
+  val logger = Logging.getLogger(system, this)
   val remoteActor = system.actorOf(Props[RemoteActorCreator], name = "RemoteActor")
-  out("started")
+  logger.info("Started...")
 }
 
-class RemoteActorCreator extends Actor with MyBeautifulOutput {
+class RemoteActorCreator extends Actor {
   val address = NetworkInterface.getNetworkInterfaces.next.getInetAddresses.toList.get(1).getHostAddress
-
+  val logger = Logging.getLogger(context.system, this)
   import context.dispatcher
   val remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
   remote ! ConnectionRequest
 
   override def receive = {
     case CreateNewActor(t, id, subString, sendString) =>
-      out("Got request for new actor")
+      logger.debug("Got CreateNewActor request")
       if (t == "ParrotActor") {
-        out("Creating parrotActor");
-        //TODO: create actor with id
+        logger.debug("Creating new Parrot Actor: " + id)
         sender ! ActorCreated(context.system.actorOf(Props(classOf[ParrotActor], id, subString, sendString)))
       }
       else sender ! NonexistentActorType
-    case StopSystem => context.system.scheduler.scheduleOnce(1.second) {out("shutting down"); context.system.shutdown() }
-    case Connected  => out("connected")
+    case StopSystem => context.system.scheduler.scheduleOnce(1.second) {
+      logger.info("Terminating system..." + context.system.toString)
+      context.system.shutdown()
+    }
+    case Connected  => logger.info("Connected to main actor system...")
     case TellYourIP => sender ! MyIPIs(address)
   }
 }
