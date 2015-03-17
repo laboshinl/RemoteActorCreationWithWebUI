@@ -5,6 +5,7 @@ __author__ = 'baka'
 import zmq
 import requests
 import json
+import time
 
 
 class ClientAPI(object):
@@ -57,5 +58,16 @@ def main():
         client_api.try_send('ololo %s' % str(i))
         client_api.try_recv()
 
+    for i in range(1, 10):
+        client_api.try_send('ololo %s' % str(i))
+
+    print '\nSleeping...\n'
+    time.sleep(2)
+
+    for i in range(1, 10):
+        client_api.try_recv()
+
 if __name__ == "__main__":
     main()
+
+#TODO: it's highly recommended to write disconnect method!
