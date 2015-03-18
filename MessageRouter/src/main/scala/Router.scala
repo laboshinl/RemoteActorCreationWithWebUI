@@ -1,6 +1,8 @@
 import java.net.NetworkInterface
 import akka.actor.{Props, ActorSystem}
 import akka.event.{LoggingAdapter, Logging}
+import akka.routing.RoundRobinPool
+import com.typesafe.config.ConfigFactory
 
 /**
  * Created by baka on 11.03.15.
@@ -12,6 +14,10 @@ object Router extends App {
   addresses.nextElement()
   val address = addresses.nextElement().getHostAddress
   logger.debug("My IP: " + address)
-  val remoteActor = system.actorOf(Props(classOf[ReceiverActor], address, "12345"), name = "ReceiverActor")
+  val port = ConfigFactory.load().getString("my.own.port")
+  val poolSize = ConfigFactory.load().getInt("my.own.pool-size")
+  val routingInfoActor = system.actorOf(Props(classOf[RoutingInfoActor], address, port), name = "RoutingInfoActor")
+  val workerPool = system.actorOf(Props(classOf[PrepareForResendActor], routingInfoActor).withRouter(RoundRobinPool(poolSize)), name = "ResendActorPool")
+  val remoteActor = system.actorOf(Props(classOf[ReceiverActor], address, port, workerPool), name = "ReceiverActor")
   logger.debug("Router System Started")
 }

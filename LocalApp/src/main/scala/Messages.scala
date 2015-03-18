@@ -1,4 +1,5 @@
 import java.io.Serializable
+import java.util.UUID
 import akka.actor.ActorRef
 import scala.concurrent.Future
 
@@ -45,18 +46,18 @@ case object MachineStart extends Serializable
 case class MachineTermination(val vmId : String) extends Serializable
 
 @SerialVersionUID(39L)
-case class RegisterPair(val clientId : String, val actorId : String) extends Serializable
+case class RegisterPair(val clientId : UUID, val actorId : UUID) extends Serializable
 @SerialVersionUID(40L)
 case class PairRegistered(val clientSubStr : String, val actorSubStr : String, val sendString : String) extends Serializable
 @SerialVersionUID(41L)
 case object NoRouters extends Serializable
 
 @SerialVersionUID(14L)
-case class AddPair(val clientId : String, val actorId : String)
+case class AddPair(val clientId : UUID, val actorId : UUID)
 @SerialVersionUID(15L)
-case class GetMessage(val Key: String) extends Serializable
+case class GetMessage(val Key: UUID) extends Serializable
 @SerialVersionUID(16L)
-case class SetMessage(val Key: String) extends Serializable
+case class SetMessage(val Key: UUID) extends Serializable
 @SerialVersionUID(17L)
 case class NoElementWithSuchKey() extends Serializable
 @SerialVersionUID(123L)

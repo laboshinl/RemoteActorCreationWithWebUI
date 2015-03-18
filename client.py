@@ -54,17 +54,17 @@ class ClientAPI(object):
 
 def main():
     client_api = ClientAPI('http://127.0.0.1:8080')
-    for i in range(1, 200):
+    for i in range(1, 2):
         client_api.try_send('ololo %s' % str(i))
         client_api.try_recv()
 
-    for i in range(1, 10):
+    for i in range(1, 2):
         client_api.try_send('ololo %s' % str(i))
 
     print '\nSleeping...\n'
     time.sleep(2)
 
-    for i in range(1, 10):
+    for i in range(1, 2):
         client_api.try_recv()
 
 if __name__ == "__main__":
