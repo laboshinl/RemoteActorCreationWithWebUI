@@ -18,10 +18,10 @@ object Router extends App {
   val poolSize = ConfigFactory.load().getInt("my.own.pool-size")
   val routingInfoActor = system.actorOf(Props(classOf[RoutingInfoActor], address, port), name = "RoutingInfoActor")
   /**
-   * Очень странная штука тут.
-   * Не могу понять почему сообщение не отправляется, если сначала проходит через пул обработчиков.
+   * На входе нельзя ставить пулл обработчиков. Возможен реордеринг сообщений.
+   * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   *
    */
-  //val workerPool = system.actorOf(Props(classOf[PrepareForResendActor], routingInfoActor).withRouter(RoundRobinPool(poolSize)), name = "ResendActorPool")
   val remoteActor = system.actorOf(Props(classOf[ReceiverActor], address, port, routingInfoActor), name = "ReceiverActor")
   logger.debug("Router System Started")
 }

@@ -43,7 +43,7 @@ class ClientAPI(object):
 
     def try_send(self, msg):
         print 'Sending msg: %s' % msg
-        frames = [self.client_id.encode(), msg.encode()]
+        frames = [self.client_id.encode() + '.ololo'.encode(), msg.encode()]
         print 'Create and send frames: ', frames
         self.send_socket.send_multipart(msg_parts=frames)
 
@@ -54,17 +54,17 @@ class ClientAPI(object):
 
 def main():
     client_api = ClientAPI('http://127.0.0.1:8080')
-    for i in range(1, 2):
+    for i in range(1, 100):
         client_api.try_send('ololo %s' % str(i))
         client_api.try_recv()
 
-    for i in range(1, 2):
+    for i in range(1, 100):
         client_api.try_send('ololo %s' % str(i))
 
     print '\nSleeping...\n'
     time.sleep(2)
 
-    for i in range(1, 2):
+    for i in range(1, 100):
         client_api.try_recv()
 
 if __name__ == "__main__":
