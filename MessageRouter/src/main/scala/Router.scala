@@ -17,7 +17,6 @@ object Router extends App {
   val port = ConfigFactory.load().getString("my.own.port")
   val poolSize = ConfigFactory.load().getInt("my.own.pool-size")
   val routingInfoActor = system.actorOf(Props(classOf[RoutingInfoActor], address, port), name = "RoutingInfoActor")
-  val workerPool = system.actorOf(Props(classOf[PrepareForResendActor], routingInfoActor).withRouter(RoundRobinPool(poolSize)), name = "ResendActorPool")
-  val remoteActor = system.actorOf(Props(classOf[ReceiverActor], address, port, workerPool), name = "ReceiverActor")
+  val remoteActor = system.actorOf(Props(classOf[ReceiverActor], address, port, routingInfoActor), name = "ReceiverActor")
   logger.debug("Router System Started")
 }

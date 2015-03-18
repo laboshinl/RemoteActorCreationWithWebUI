@@ -9,18 +9,14 @@ import akka.zeromq._
 import akka.zeromq.ZMQMessage
 
 
-class ReceiverActor(val address : String, val port : String, val workers : ActorRef) extends Actor {
+class ReceiverActor(val address : String, val port : String, val routingInfo : ActorRef) extends Actor {
   var uniquePort = port.toInt + 1
   val zmqSystem = ZeroMQExtension(context.system)
   val listenSocket : ActorRef = zmqSystem.newRouterSocket(Array(Bind("tcp://*:" + port), Listener(self)))
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
 
   def resendForRouting(msg : ZMQMessage) = {
-    workers forward msg
-  }
-
-  def getSendString : Unit = {
-    sender ! "tcp://" + address + ":" + port
+    routingInfo ! msg
   }
 
   override def receive: Receive = {
