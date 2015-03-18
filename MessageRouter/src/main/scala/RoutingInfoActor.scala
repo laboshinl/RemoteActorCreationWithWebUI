@@ -70,6 +70,22 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
     sender ! "tcp://" + address + ":" + port
   }
 
+  def resendToReceiver(msg : ZMQMessage) : Unit = {
+    val stringId = msg.frame(1).decodeString("UTF-8")
+    val id = UUID.fromString(stringId)
+    logger.debug("ZMQmessage received from: " + id)
+    if (routingInfo.contains(id)) {
+      val receiverId = routingPairs(id)
+      logger.debug("Sending to socket: " + routingAddresses(id) + " with topic: " + receiverId)
+      val publisher : ActorRef = routingInfo(id)
+      logger.debug("Get Publisher : " + publisher)
+      val zmqmsg = ZMQMessage(immutable.Seq(ByteString(receiverId.toString)) ++ msg.frames.drop(2))
+      publisher ! zmqmsg
+    } else {
+      logger.error("Can't find receiver for message: ", msg.toString)
+    }
+  }
+
   def resendToReceiver(msg : ResendMsg) : Unit = {
     val resendToUUID = msg.resendTo
     val zmqMsg = msg.msg
@@ -84,7 +100,8 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
   }
 
   override def receive: Receive = {
-    case msg : ResendMsg        => resendToReceiver(msg)
+    case msg : ZMQMessage        => resendToReceiver(msg)
+    case msg : ResendMsg        => resendToReceiver(msg) // this don't work :(
     case msg : SetMessage       => setNewUser(msg)
     case msg : AddPair          => associateUsers(msg)
     case msg : GetMessage       => getUserPublisherConnectionString(msg)
