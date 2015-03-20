@@ -1,6 +1,6 @@
 import java.util.UUID
 
-import akka.actor.Actor
+import akka.actor.{PoisonPill, Actor}
 import akka.actor.Actor.Receive
 import akka.event.{Logging, LoggingAdapter}
 import akka.util.ByteString
@@ -15,6 +15,11 @@ class Publisher(val bindString : String, var routingPairs : mutable.HashMap[UUID
   val zmqSystem = ZeroMQExtension(context.system)
   val pubSocket = zmqSystem.newPubSocket(Bind(bindString))
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
+
+
+  override def postStop(): Unit = {
+    pubSocket ! PoisonPill
+  }
 
   override def receive: Receive = {
     case msg : ZMQMessage => {

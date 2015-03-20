@@ -97,7 +97,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
 
   def planActorDeletion(ar: IdToJson): ToResponseMarshallable = {
     Await.result(Controller ? PlanActorTermination(ar.Id), timeout.duration)match {
-      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Actor termination is planned: " + id))
+      case id : String  => HttpResponse(entity = HttpEntity(`text/html`,"Actor termination is planned: " + id))
       case NoSuchId   => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
       case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
@@ -113,7 +113,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
 
   def planMachineDeletion(ar: IdToJson): ToResponseMarshallable = {
     Await.result(Controller ? PlanMachineTermination(ar.Id), timeout.duration) match {
-      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
+      case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
       case NoSuchId   => HttpResponse(entity = HttpEntity(`text/html`, "There is no vm with such id"))
       case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }

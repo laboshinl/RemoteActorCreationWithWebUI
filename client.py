@@ -52,6 +52,14 @@ class ClientAPI(object):
         frames = self.recv_socket.recv_multipart()
         print 'Received frames: ', frames
 
+    def disconnect(self):
+        print 'Disconnecting...'
+        data = {'Id': self.client_id}
+        req = requests.delete(self.url + '/actor', data=json.dumps(data), headers=self.headers)
+        task_id = req.text.split(': ')[1]
+        resp = self.wait_for_task(task_id)
+        print 'Response: ', resp
+
 def main():
     client_api = ClientAPI('http://127.0.0.1:8080')
     for i in range(1, 100):
@@ -66,6 +74,8 @@ def main():
 
     for i in range(1, 100):
         client_api.try_recv()
+
+    client_api.disconnect()
 
 if __name__ == "__main__":
     main()

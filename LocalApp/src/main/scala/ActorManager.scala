@@ -38,7 +38,8 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     if (idToActorsMap.contains(id)){
       idToActorsMap(id) ! PoisonPill
       idToActorsMap -= id
-      sender ! id
+      RouterProvider ! DeleteClient(id)
+      sender ! stringUUID
     }
     else sender ! NoSuchId
   }

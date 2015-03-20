@@ -22,5 +22,7 @@ case class NoElementWithSuchKey() extends Serializable
 @SerialVersionUID(123L)
 case class GetSendString() extends Serializable
 @SerialVersionUID(124L)
-case class PublishFor(recieverUUID : UUID, message : ZMQMessage) extends Serializable
+case class PublishFor(receiverUUID : UUID, message : ZMQMessage) extends Serializable
+@SerialVersionUID(125L)
+case class DeleteClient(clientUUID : UUID) extends Serializable
 

@@ -1,6 +1,6 @@
 import java.util.UUID
 
-import akka.actor.{Props, ActorRef, Actor}
+import akka.actor.{PoisonPill, Props, ActorRef, Actor}
 import akka.actor.Actor.Receive
 import akka.event.{Logging, LoggingAdapter}
 import akka.util.ByteString
@@ -30,6 +30,21 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
     uniquePort += 1
     logger.debug("Received Set message: " + msg.Key + " created PubSocket on: " + routingInfo(msg.Key))
     sender ! bindString
+  }
+
+  def deleteUser(msg : DeleteClient) : Unit = {
+    val clientUUID = msg.clientUUID
+    if (routingPairs.contains(clientUUID)) {
+      val robotUUID = routingPairs(clientUUID)
+      routingPairs.remove(clientUUID)
+      routingPairs.remove(robotUUID)
+      routingAddresses.remove(clientUUID)
+      routingAddresses.remove(robotUUID)
+      routingInfo(clientUUID) ! PoisonPill
+      routingInfo(robotUUID) ! PoisonPill
+      routingInfo.remove(clientUUID)
+      routingInfo.remove(robotUUID)
+    }
   }
 
   def getUserPublisherConnectionString(msg : GetMessage) : Unit = {
@@ -67,6 +82,7 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
     case msg : SetMessage       => setNewUser(msg)
     case msg : AddPair          => associateUsers(msg)
     case msg : GetMessage       => getUserPublisherConnectionString(msg)
+    case msg : DeleteClient     => deleteUser(msg)
     case GetSendString          => getSendString
     case Connected              => logger.info("Connected to main actor system...")
     case msg : String           => logger.debug("Received string: " + msg); sender ! msg
