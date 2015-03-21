@@ -12,6 +12,7 @@ akka {
       port = 0
     }
   }
+  
   zeromq {
 
     # The default timeout for a poll on the actual zeromq socket.
@@ -30,8 +31,5 @@ akka {
 }
 
 my.own{
-  master-address = "akka.tcp://LocalSystem@127.0.0.1:11111/user/RoutersProvider"
+  master-address = "akka.tcp://LocalSystem@127.0.0.1:11111/user/Remoter"
 }
-
-# sudo add-apt-repository ppa:chris-lea/zeromq
-# sudo aptitude install libzmq-dev
