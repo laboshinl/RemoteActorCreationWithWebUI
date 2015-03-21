@@ -1,3 +1,5 @@
+import java.util.UUID
+
 import akka.actor.{ActorRef, Actor}
 import akka.event.{Logging, LoggingAdapter}
 import akka.util.Timeout
@@ -12,10 +14,10 @@ import akka.pattern.ask
 class RouterManager extends Actor {
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
   // таблица с роутерами
-  var remoteRoutersMap = new mutable.HashMap[Long, ActorRef]
+  var remoteRoutersMap = new mutable.HashMap[UUID, ActorRef]
   // загрузка роутера (число обслуживаемых юзеров, роутер)
-  var routersLoad = new mutable.ArrayBuffer[(Long, Long)]
-  var uniqueId = 0
+  var routersLoad = new mutable.ArrayBuffer[(Long, UUID)]
+  var routersClients = new mutable.HashMap[UUID, ActorRef]
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = logger.debug("Path : " + context.self.path.toString)
@@ -32,7 +34,7 @@ class RouterManager extends Actor {
 
   def connectRouter(sender: ActorRef) = {
     logger.info("Connection request")
-    uniqueId += 1
+    val uniqueId = UUID.randomUUID()
     remoteRoutersMap += ((uniqueId, sender))
     routersLoad += ((0, uniqueId))
     routersLoad = routersLoad.sorted
@@ -72,6 +74,7 @@ class RouterManager extends Actor {
       val connectString = respForSendString.asInstanceOf[String]
       router ! AddPair(pair.clientId, pair.actorId)
       logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
+      routersClients += ((pair.clientId, router))
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       sender ! PairRegistered(clientStr, actorStr, connectString)
     } else {
@@ -81,13 +84,16 @@ class RouterManager extends Actor {
     }
   }
 
+  def deleteClient(msg : DeleteClient) = {
+    if (routersClients.contains(msg.clientUUID)) {
+      routersClients(msg.clientUUID) ! msg
+    }
+  }
+
   override def receive : Receive = {
-    case ConnectionRequest                =>  {
-      connectRouter(sender)
-    }
-    case pair: RegisterPair  => {
-      registerPair(sender, pair)
-    }
+    case ConnectionRequest    => connectRouter(sender)
+    case pair: RegisterPair   => registerPair(sender, pair)
+    case msg : DeleteClient   => deleteClient(msg)
     //TODO: remove pair request!
     case msg => logger.debug("Unknown Message: " + msg.toString)
   }

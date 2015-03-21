@@ -1,3 +1,5 @@
+import java.util.UUID
+
 import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.event.Logging
 import scala.concurrent.duration._
@@ -13,7 +15,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
   implicit val timeout: Timeout = 1 minute
   var logger = Logging.getLogger(context.system, self)
 
-  var idToActorsMap = new scala.collection.mutable.HashMap[String, ActorRef]
+  var idToActorsMap = new scala.collection.mutable.HashMap[UUID, ActorRef]
 
   override def receive: Receive = {
     case ActorCreation(t) => createActorOnRemoteMachine(t)
@@ -21,7 +23,8 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     case SendMessageToActor(id, msg) => sendMessageToActorOnRemoteMachine(id, msg)
   }
 
-  def sendMessageToActorOnRemoteMachine(id: String, msg: String) = {
+  def sendMessageToActorOnRemoteMachine(stringUUID: String, msg: String) = {
+    val id = UUID.fromString(stringUUID)
     if (idToActorsMap.contains(id)){
       val res = Await.result(idToActorsMap(id) ? msg, timeout.duration)
       if (res.isInstanceOf[String]) sender ! res.toString
@@ -30,24 +33,26 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     else sender ! NoSuchId
   }
 
-  def deleteActorOnRemoteMachine(id: String) = {
+  def deleteActorOnRemoteMachine(stringUUID: String) = {
+    val id = UUID.fromString(stringUUID)
     if (idToActorsMap.contains(id)){
       idToActorsMap(id) ! PoisonPill
       idToActorsMap -= id
-      sender ! id
+      RouterProvider ! DeleteClient(id)
+      sender ! stringUUID
     }
     else sender ! NoSuchId
   }
 
   def createActorOnRemoteMachine (actorType : String) = {
-    val actorId  = java.util.UUID.randomUUID.toString
-    val clientId = java.util.UUID.randomUUID.toString
+    val actorId  = UUID.randomUUID
+    val clientId = UUID.randomUUID
 
-    logger.debug("Create Actor for client: " + clientId)
+    logger.debug("Create Actor for client: " + clientId.toString)
     Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
-        logger.debug("Pair registred on Router")
-        Await.result(RemoterActor ? CreateNewActor(actorType, actorId, res.actorSubStr, res.sendString), timeout.duration) match {
+        logger.debug("Pair registered on Router")
+        Await.result(RemoterActor ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
             idToActorsMap += ((clientId, createRes.asInstanceOf[ActorCreated].adr))

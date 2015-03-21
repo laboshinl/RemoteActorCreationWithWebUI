@@ -17,7 +17,7 @@ class TestOpenStackActor extends FeatureSpec with GivenWhenThen {
    * I think OS works good. No exceptions and null pointers i didn't see in this test
    */
 
-  feature("VM creation") {
+  /*feature("VM creation") {
     scenario("Create and delete VM in OS") {
       implicit val system = ActorSystem("LocalSystem")
       implicit val timeout : Timeout = 2 minute
@@ -45,5 +45,5 @@ class TestOpenStackActor extends FeatureSpec with GivenWhenThen {
 
       osActor ! MachineTermination(1)
     }
-  }
+  }*/
 }

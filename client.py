@@ -5,6 +5,7 @@ __author__ = 'baka'
 import zmq
 import requests
 import json
+import time
 
 
 class ClientAPI(object):
@@ -42,7 +43,7 @@ class ClientAPI(object):
 
     def try_send(self, msg):
         print 'Sending msg: %s' % msg
-        frames = [self.client_id.encode(), msg.encode()]
+        frames = [self.client_id.encode() + '.ololo'.encode(), msg.encode()]
         print 'Create and send frames: ', frames
         self.send_socket.send_multipart(msg_parts=frames)
 
@@ -51,11 +52,32 @@ class ClientAPI(object):
         frames = self.recv_socket.recv_multipart()
         print 'Received frames: ', frames
 
+    def disconnect(self):
+        print 'Disconnecting...'
+        data = {'Id': self.client_id}
+        req = requests.delete(self.url + '/actor', data=json.dumps(data), headers=self.headers)
+        task_id = req.text.split(': ')[1]
+        resp = self.wait_for_task(task_id)
+        print 'Response: ', resp
+
 def main():
     client_api = ClientAPI('http://127.0.0.1:8080')
-    for i in range(1, 200):
+    for i in range(1, 100):
         client_api.try_send('ololo %s' % str(i))
         client_api.try_recv()
 
+    for i in range(1, 100):
+        client_api.try_send('ololo %s' % str(i))
+
+    print '\nSleeping...\n'
+    time.sleep(2)
+
+    for i in range(1, 100):
+        client_api.try_recv()
+
+    client_api.disconnect()
+
 if __name__ == "__main__":
     main()
+
+#TODO: it's highly recommended to write disconnect method!

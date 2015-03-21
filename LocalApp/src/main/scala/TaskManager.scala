@@ -11,7 +11,7 @@ class TaskManager extends Actor {
   var idToTasksMap = new scala.collection.mutable.HashMap[String, Future[Any]]
 
   override def receive: Receive = {
-    case ManageTask(future) => {val id = java.util.UUID.randomUUID.toString; idToTasksMap += (( id, future)); sender ! id }
+    case ManageTask(future) => {val id = java.util.UUID.randomUUID.toString; idToTasksMap += ((id, future)); sender ! id }
     case TaskStatus(taskId) =>
       if (idToTasksMap.contains(taskId))
         if (idToTasksMap(taskId).isCompleted) {
