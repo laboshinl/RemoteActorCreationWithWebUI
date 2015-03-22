@@ -7,10 +7,13 @@ cd ../RemoteApp/
 sbt compile &
 cd ../MessageRouter/
 sbt compile &
+while [[ $(ps -ax | grep "sbt compile" | wc -l) != 1 ]]; do
+	sleep 2
+done
 echo "Starting everything"
 cd ../LocalApp/
-sbt run &
+xfce4-terminal -H -e "sbt run"
 cd ../RemoteApp/
-sbt run &
+xfce4-terminal -H -e "sbt run"
 cd ../MessageRouter/
-sbt run &
+xfce4-terminal -H -e "sbt run"
