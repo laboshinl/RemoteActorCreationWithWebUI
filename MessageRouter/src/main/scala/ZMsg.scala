@@ -62,7 +62,7 @@ class ZMsg {
     address
   }
 
-  def dump = {
+  def dump() = {
     println(new String("-") * 38)
     for (msg <- msgParts) {
       printf("[%d] ",msgParts.length)

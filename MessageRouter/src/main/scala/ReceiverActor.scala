@@ -20,7 +20,6 @@ class ReceiverActor(val address : String, val port : String, val routingInfo : A
   }
 
   override def receive: Receive = {
-    //TODO: remove client
     case msg : ZMQMessage   => resendForRouting(msg)
   }
 
