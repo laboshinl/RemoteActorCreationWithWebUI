@@ -17,14 +17,12 @@ class RemoteConnection extends Actor {
   logger.info("Remoter started")
 
   def remote : ActorRef = {
-    // Please, make u code breath. Please :-[
     val r = scala.util.Random.nextInt(remoteSystems.size) + 1
     logger.debug("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
     remoteSystems(r)
   }
 
   override def receive: Receive = {
-    //TODO:remove actor with id...
     case CreateNewActor(t, id, subString, sendString)   =>  {logger.debug("Got request on creation"); waiter = sender; remote ! CreateNewActor(t, id, subString, sendString)}
     case ActorCreated(adr)                              =>  {logger.debug("Checking address"); adr ! CheckAddress}
     case NonexistentActorType                           =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
