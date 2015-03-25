@@ -18,7 +18,6 @@ class ParrotActor(id : String, subString : String, sendString : String) extends 
   }
 
   override def receive: Receive = {
-    //TODO: let me die, please.
     case msg : ZMQMessage => {
       logger.debug("Received ZMQ msg: " + msg)
       val payload = msg.frames.drop(1).foldLeft("")((ls : String, rs : ByteString) => ls + rs.decodeString("UTF-8"))
