@@ -63,29 +63,34 @@ case class NoElementWithSuchKey() extends Serializable
 @SerialVersionUID(123L)
 case class GetSendString() extends Serializable
 
-@SerialVersionUID(71L)
-case class PlanActorCreation(actorType : String) extends Serializable
-@SerialVersionUID(72L)
-case class ManageTask(task : Future[Any]) extends Serializable
-@SerialVersionUID(73L)
-case class TaskStatus(taskId : String) extends Serializable
 @SerialVersionUID(74L)
 case object TaskIncomplete extends Serializable
 @SerialVersionUID(75L)
 case object TaskFailed extends Serializable
 @SerialVersionUID(76L)
 case class TaskCompleted() extends Serializable
+@SerialVersionUID(81L)
+case class TaskCompletedWithId(id: String) extends Serializable
 @SerialVersionUID(77L)
 case object NoSuchId extends Serializable
+@SerialVersionUID(71L)
+case class PlanActorCreation(actorType : String) extends Serializable
+@SerialVersionUID(72L)
+case class ManageTask(task : Future[Any]) extends Serializable
+@SerialVersionUID(73L)
+case class TaskStatus(taskId : String) extends Serializable
 @SerialVersionUID(79L)
 case class SendMessageToActor(actorId: String, msg: String) extends Serializable
 @SerialVersionUID(80L)
 case class PlanActorTermination(actorId: String) extends Serializable
-@SerialVersionUID(81L)
-case class TaskCompletedWithId(id: String) extends Serializable
 @SerialVersionUID(82L)
 case class ActorCreation(actorType : String) extends Serializable
 @SerialVersionUID(83L)
 case class ActorTermination(actorId: String) extends Serializable
 @SerialVersionUID(125L)
 case class DeleteClient(clientUUID : UUID) extends Serializable
+
+@SerialVersionUID(201L)
+case object NoRemoteSystems extends Serializable
+@SerialVersionUID(202L)
+case class TaskResponse(Type: String, Result: String) extends Serializable

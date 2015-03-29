@@ -53,7 +53,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
       delete{ entity(as[IdToJson]) { ar => complete { planMachineDeletion(ar) } } }
     }~
     path("task"){
-      get{ entity(as[IdToJson]) { ar => complete{ getTaskStatus(ar) } } }
+      get{ entity(as[IdToJson]) { ar => respondWithMediaType(`application/json`){ complete{ getTaskStatus(ar) } } } }
     }
   }
 
@@ -91,7 +91,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
   def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
     Await.result(Controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
       case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Actor creation is planned: " + id))
-      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+      case _            => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
@@ -128,13 +128,13 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
 
   def getTaskStatus(ar: IdToJson): ToResponseMarshallable = {
     Await.result(TaskManager ? TaskStatus(ar.Id), timeout.duration) match{
-      case TaskCompleted           => HttpResponse(entity = HttpEntity(`text/html`, "Task completed"))
-      case TaskCompletedWithId(id) => HttpResponse(entity = HttpEntity(`text/html`, "Task completed, id:"+id.toString))
-      case TaskFailed              => HttpResponse(entity = HttpEntity(`text/html`, "Task failed"))
-      case TaskIncomplete          => HttpResponse(entity = HttpEntity(`text/html`, "Task not ready yet"))
-      case NoSuchId                => HttpResponse(entity = HttpEntity(`text/html`, "There is no task with such id"))
-      case msg: String             => HttpResponse(entity = HttpEntity(`text/html`, msg))
-      case _                       => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+      case TaskCompleted           => TaskResponse("Success","")
+      case TaskCompletedWithId(id) => TaskResponse("Success", id.toString)
+      case msg: String             => TaskResponse("Message",msg)
+      case TaskIncomplete          => TaskResponse("Incomplete","")
+      case TaskFailed              => TaskResponse("Error","Task failed")
+      case NoSuchId                => TaskResponse("Error","No such Id")
+      case _                       => TaskResponse("Error","Unknown error")
     }
   }
 }

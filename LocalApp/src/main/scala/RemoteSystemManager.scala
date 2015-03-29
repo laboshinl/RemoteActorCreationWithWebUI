@@ -8,7 +8,7 @@ import akka.event.Logging
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
-class RemoteConnection extends Actor {
+class RemoteSystemManager extends Actor {
   var waiter : ActorRef = null
   val logger = Logging.getLogger(context.system, self)
   var remoteSystems = new scala.collection.mutable.HashMap[Long, ActorRef]
@@ -23,7 +23,15 @@ class RemoteConnection extends Actor {
   }
 
   override def receive: Receive = {
-    case CreateNewActor(t, id, subString, sendString)   =>  {logger.debug("Got request on creation"); waiter = sender; remote ! CreateNewActor(t, id, subString, sendString)}
+    case CreateNewActor(t, id, subString, sendString)   =>  {
+      logger.debug("Got request on creation")
+      if(remoteSystems.isEmpty) {
+        logger.debug("Empty remoteSystemsList")
+        sender ! NoRemoteSystems
+      }
+      waiter = sender
+      remote ! CreateNewActor(t, id, subString, sendString)
+    }
     case ActorCreated(adr)                              =>  {logger.debug("Checking address"); adr ! CheckAddress}
     case NonexistentActorType                           =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
     case AddressIsOk                                    =>  {logger.debug("Address is ok"); waiter ! ActorCreated(sender)}
