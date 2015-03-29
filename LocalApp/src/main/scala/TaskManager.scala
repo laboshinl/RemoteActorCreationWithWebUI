@@ -16,11 +16,7 @@ class TaskManager extends Actor {
       if (idToTasksMap.contains(taskId))
         if (idToTasksMap(taskId).isCompleted) {
           Await.result(idToTasksMap(taskId), 1 minute) match{
-            case TaskCompleted => sender ! TaskCompleted
-            case t : TaskCompletedWithId => sender ! t
-            case NoSuchId => sender ! NoSuchId
-            case msg : String => sender ! msg
-            case _ => sender ! TaskFailed
+            case msg => sender ! msg
           }
         }
         else sender ! TaskIncomplete

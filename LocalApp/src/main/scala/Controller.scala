@@ -22,7 +22,7 @@ class Controller(val ActorManager     : ActorRef,
     case PlanActorTermination(actorId)    => planAction(ActorManager ? ActorTermination(actorId))
     // This is not planning but direct request of String answer
     case ActorIdAndMessageToJson(id, msg) => sender ! Await.result(ActorManager ? SendMessageToActor(id, msg), timeout.duration)
-
+    case rc: RemoteCommand => ActorManager ! rc
     case PlanMachineStart             => planAction(OpenstackManager ? MachineStart)
     case PlanMachineTermination(vmId) => planAction(OpenstackManager ? MachineTermination(vmId))
   }

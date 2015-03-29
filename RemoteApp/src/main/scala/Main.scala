@@ -31,8 +31,12 @@ class RemoteActorCreator extends Actor {
       if (t == "ParrotActor") {
         logger.debug("Creating new Parrot Actor: " + id)
         sender ! ActorCreated(context.system.actorOf(Props(classOf[ParrotActor], id, subString, sendString)))
+      } else if (t == "CommandProxy") {
+        logger.debug("Creating new CommandProxy Actor: {}", id)
+        sender ! ActorCreated(context.system.actorOf(Props(classOf[CommandProxyActor], id, subString, sendString)))
       }
-      else sender ! NonexistentActorType
+      else
+        sender ! NonexistentActorType
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {
       logger.info("Terminating system..." + context.system.toString)
       context.system.shutdown()

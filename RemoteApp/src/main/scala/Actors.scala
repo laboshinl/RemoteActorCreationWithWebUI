@@ -1,4 +1,4 @@
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.event.Logging
 import akka.util.ByteString
 import akka.zeromq._
@@ -8,10 +8,21 @@ import scala.collection.immutable
 /**
  * Created by mentall on 13.02.15.
  */
-class ParrotActor(id : String, subString : String, sendString : String) extends Actor {
+
+abstract class RobotActor(id: String, subString: String, sendString: String) extends Actor {
   val logger = Logging.getLogger(context.system, this)
   val subSocket = ZeroMQExtension(context.system).newSubSocket(Connect(subString), Listener(self), Subscribe(id))
   val sendSocket  = ZeroMQExtension(context.system).newDealerSocket(Array(Connect(sendString), Listener(self)))
+
+  @throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    subSocket ! PoisonPill
+    sendSocket ! PoisonPill
+  }
+}
+
+class ParrotActor(id: String, subString: String, sendString: String) extends RobotActor(id, subString, sendString) {
+
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     logger.debug("Parrot Actor created: " + id + " With subString: " + subString + " and sendString: " + sendString)
@@ -34,4 +45,14 @@ class ParrotActor(id : String, subString : String, sendString : String) extends 
     }
     case CheckAddress => sender	 ! AddressIsOk
   }
+
+  @throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    subSocket ! PoisonPill
+    sendSocket ! PoisonPill
+  }
+}
+
+class CommandProxyActor(id: String, subString: String, sendString: String) extends RobotActor(id, subString, sendString) {
+  override msg : String
 }

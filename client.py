@@ -14,7 +14,7 @@ class ClientAPI(object):
         data = {'actorType': 'ParrotActor'}
         self.headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
         req = requests.put(self.url + '/actor', data=json.dumps(data), headers=self.headers)
-        task_id = req.text.split(': ')[1]
+        print req
         resp = self.wait_for_task(task_id)
         [client_id, sub_string, send_string] = resp.split(' ')
         self.client_id = str(client_id)

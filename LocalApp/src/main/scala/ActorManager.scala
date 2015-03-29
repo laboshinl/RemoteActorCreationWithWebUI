@@ -21,6 +21,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     case ActorCreation(t) => createActorOnRemoteMachine(t)
     case ActorTermination(id) => deleteActorOnRemoteMachine(id)
     case SendMessageToActor(id, msg) => sendMessageToActorOnRemoteMachine(id, msg)
+    case rc: RemoteCommand => sendRemoteCommand(rc)
   }
 
   def sendMessageToActorOnRemoteMachine(stringUUID: String, msg: String) = {
@@ -39,9 +40,9 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
       idToActorsMap(id) ! PoisonPill
       idToActorsMap -= id
       RouterProvider ! DeleteClient(id)
-      sender ! stringUUID
+      sender ! TaskResponse("Success", stringUUID)
     }
-    else sender ! NoSuchId
+    else sender ! TaskResponse("Error", "NoSuchId")
   }
 
   def createActorOnRemoteMachine (actorType : String) = {
@@ -56,16 +57,23 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
             idToActorsMap += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
-            sender ! (clientId.toString + " " + res.clientSubStr + " " + res.sendString)
+            sender ! ActorCreationSuccess("Success", clientId.toString, res.clientSubStr, res.sendString)
           case NonexistentActorType => {
             logger.error("Error: Wrong Actor Type")
-            sender ! "Error: Wrong Actor Type"
+            sender ! TaskResponse("Error", "Wrong Actor Type")
           }
         }
-      case NoRouters =>{
+      case NoRouters => {
         logger.error("Error: No Routers")
-        sender ! "Error: No Routers"
+        sender ! TaskResponse("Error", "Wrong Actor Type")
       }
+    }
+  }
+
+  def sendRemoteCommand(rc: RemoteCommand): Unit = {
+    val id = UUID.fromString(rc.clientUID)
+    if (idToActorsMap.contains(id)) {
+      idToActorsMap(id) ! rc
     }
   }
 }

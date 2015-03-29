@@ -38,7 +38,10 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
       }~
       post{
         entity(as[ActorIdAndMessageToJson]) {
-          ar => complete{ sendMessageToActorOnRemoteMachine(ar)  }
+          ar => complete{ sendMessageToActorOnRemoteMachine(ar) }
+        }
+        entity(as[RemoteCommand]) {
+          rc => complete{ sendRemoteCommandToActor(rc) }
         }
       }~
       delete{
@@ -90,16 +93,15 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
 
   def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
     Await.result(Controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
-      case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Actor creation is planned: " + id))
-      case _            => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+      case id : String  => Map("Status" -> "Success", "TaskId" -> id)
+      case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def planActorDeletion(ar: IdToJson): ToResponseMarshallable = {
     Await.result(Controller ? PlanActorTermination(ar.Id), timeout.duration)match {
-      case id : String  => HttpResponse(entity = HttpEntity(`text/html`,"Actor termination is planned: " + id))
-      case NoSuchId   => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
-      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+      case id : String  => Map("Status" -> "Success", "TaskId" -> id)
+      case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
@@ -126,15 +128,22 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
     }
   }
 
+  def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
+    Controller ! rc
+    HttpResponse(entity = HttpEntity(`text/html`, "ok"))
+  }
+
   def getTaskStatus(ar: IdToJson): ToResponseMarshallable = {
     Await.result(TaskManager ? TaskStatus(ar.Id), timeout.duration) match{
-      case TaskCompleted           => TaskResponse("Success","")
+      case TaskCompleted           => TaskResponse("Success", "")
       case TaskCompletedWithId(id) => TaskResponse("Success", id.toString)
-      case msg: String             => TaskResponse("Message",msg)
-      case TaskIncomplete          => TaskResponse("Incomplete","")
-      case TaskFailed              => TaskResponse("Error","Task failed")
-      case NoSuchId                => TaskResponse("Error","No such Id")
-      case _                       => TaskResponse("Error","Unknown error")
+      case TaskIncomplete          => TaskResponse("Incomplete", "")
+      case TaskFailed              => TaskResponse("Error", "Task failed")
+      case NoSuchId                => TaskResponse("Error", "No such Id")
+      case result: ActorCreationSuccess  => result
+      case result: TaskResponse    => result
+      case msg: String             => TaskResponse("Error", msg)
+      case _                       => TaskResponse("Error", "Unknown error")
     }
   }
 }

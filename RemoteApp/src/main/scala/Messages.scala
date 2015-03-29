@@ -27,4 +27,7 @@ case object Connected extends Serializable
 @SerialVersionUID(27L)
 case object TellYourIP extends Serializable
 @SerialVersionUID(28L)
-case class MyIPIs (val IP : String) extends Serializable
+case class MyIPIs (IP : String) extends Serializable
+
+@SerialVersionUID(228L)
+case class RemoteCommand(clientUID: String, command: String) extends Serializable

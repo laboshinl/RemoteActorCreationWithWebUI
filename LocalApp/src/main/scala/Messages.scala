@@ -87,10 +87,18 @@ case class PlanActorTermination(actorId: String) extends Serializable
 case class ActorCreation(actorType : String) extends Serializable
 @SerialVersionUID(83L)
 case class ActorTermination(actorId: String) extends Serializable
+
 @SerialVersionUID(125L)
 case class DeleteClient(clientUUID : UUID) extends Serializable
+
+@SerialVersionUID(126L)
+case class ActorCreationSuccess(Status: String, clientUID : String, subString : String, sendString : String) extends Serializable
+
 
 @SerialVersionUID(201L)
 case object NoRemoteSystems extends Serializable
 @SerialVersionUID(202L)
-case class TaskResponse(Type: String, Result: String) extends Serializable
+case class TaskResponse(Status: String, Result: String) extends Serializable
+
+@SerialVersionUID(228L)
+case class RemoteCommand(clientUID: String, command: String) extends Serializable
