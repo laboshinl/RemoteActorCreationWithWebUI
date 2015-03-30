@@ -97,5 +97,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-#TODO: it's highly recommended to write disconnect method!

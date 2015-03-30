@@ -7,17 +7,19 @@ __author__ = 'baka'
 class Robot(object):
     def __init__(self, url):
         self.clientApi = ClientAPI(url, 'CommandProxy')
-        self.startRemoteCommandListner()
+        self.start_remote_command_listener()
 
-    def startRemoteCommandListner(self):
+    def start_remote_command_listener(self):
         recv_command_socket = self.clientApi.get_recv_sock_with_topic('command')
         def run():
             print threading.current_thread().name, 'started...'
             while True:
                 frames = recv_command_socket.recv_multipart()
-                for str in frames:
-                    print str
+                self.dispatch_command(frames[-1])
         threading.Thread(name='CommandThread', target=run).start()
+
+    def dispatch_command(self, json):
+        print json
 
     def disconnect(self):
         self.clientApi.disconnect()
@@ -27,7 +29,6 @@ class Robot(object):
 
 def main():
     robot = Robot('http://127.0.0.1:8080')
-    print robot.get_id()
 
 
 
