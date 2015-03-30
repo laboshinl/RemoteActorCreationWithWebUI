@@ -17,3 +17,4 @@
 *.worksheet
 *.idea
 *.iml
+*.pyc
