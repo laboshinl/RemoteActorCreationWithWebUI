@@ -15,7 +15,7 @@ curl -X DELETE localhost:8080/actor
 curl -X DELETE -H "Content-Type: application/json" -d '{"id":"1"}' localhost:8080/system
 curl -X DELETE localhost:8080/system
 
-curl -X POST -H "Content-Type: application/json" -d '{"clientUID":"cdde5acb-2e31-4b00-931a-f979aff42370", "command":"Hello", "args":["hello", "1", "2"]}' localhost:8080/command
+curl -X POST -H "Content-Type: application/json" -d '{"clientUID":"3a6163b2-24ec-419d-a39f-bc994e565877", "command":"Hello", "args":["hello", "1", "2"]}' localhost:8080/command
 
 curl -X PUT localhost:8080/system;
 sleep 5;
