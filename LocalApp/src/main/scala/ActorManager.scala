@@ -73,6 +73,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
   def sendRemoteCommand(rc: RemoteCommand): Unit = {
     val id = UUID.fromString(rc.clientUID)
     if (idToActorsMap.contains(id)) {
+      idToActorsMap(id) ! TellYourIP
       idToActorsMap(id) ! rc
     }
   }

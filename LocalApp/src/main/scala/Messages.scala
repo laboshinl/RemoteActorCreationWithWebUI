@@ -1,6 +1,7 @@
 import java.io.Serializable
 import java.util.UUID
 import akka.actor.ActorRef
+import scala.collection.immutable
 import scala.concurrent.Future
 
 /**
@@ -101,4 +102,4 @@ case object NoRemoteSystems extends Serializable
 case class TaskResponse(Status: String, Result: String) extends Serializable
 
 @SerialVersionUID(228L)
-case class RemoteCommand(clientUID: String, command: String) extends Serializable
+case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable

@@ -40,13 +40,17 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
         entity(as[ActorIdAndMessageToJson]) {
           ar => complete{ sendMessageToActorOnRemoteMachine(ar) }
         }
-        entity(as[RemoteCommand]) {
-          rc => complete{ sendRemoteCommandToActor(rc) }
-        }
       }~
       delete{
         entity(as[IdToJson]) {
           ar => complete{ planActorDeletion(ar) }
+        }
+      }
+    }~
+    path("command") {
+      post{
+        entity(as[RemoteCommand]) {
+          rc => complete{ sendRemoteCommandToActor(rc) }
         }
       }
     }~

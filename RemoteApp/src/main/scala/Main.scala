@@ -11,7 +11,6 @@ import scala.concurrent.duration._
 import scala.collection.JavaConversions._
 
 object Main extends App {
-
   val system = ActorSystem("HelloRemoteSystem")
   val logger = Logging.getLogger(system, this)
   val remoteActor = system.actorOf(Props[RemoteActorCreator], name = "RemoteActor")

@@ -2,6 +2,8 @@ import java.io.Serializable
 
 import akka.actor.ActorRef
 
+import scala.collection.immutable
+
 /**
  * Created by mentall on 13.02.15.
  */
@@ -30,4 +32,4 @@ case object TellYourIP extends Serializable
 case class MyIPIs (IP : String) extends Serializable
 
 @SerialVersionUID(228L)
-case class RemoteCommand(clientUID: String, command: String) extends Serializable
+case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable

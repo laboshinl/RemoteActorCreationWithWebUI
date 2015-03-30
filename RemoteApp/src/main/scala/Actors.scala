@@ -2,7 +2,9 @@ import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.event.Logging
 import akka.util.ByteString
 import akka.zeromq._
-
+import org.json4s._
+import org.json4s.native.JsonMethods._
+import org.json4s.native.Serialization
 import scala.collection.immutable
 
 /**
@@ -43,7 +45,7 @@ class ParrotActor(id: String, subString: String, sendString: String) extends Rob
       logger.debug("Received akka msg: " + msg)
       sender ! msg + msg + msg + "!"
     }
-    case CheckAddress => sender	 ! AddressIsOk
+    case CheckAddress => sender	! AddressIsOk
   }
 
   @throws[Exception](classOf[Exception])
@@ -54,5 +56,15 @@ class ParrotActor(id: String, subString: String, sendString: String) extends Rob
 }
 
 class CommandProxyActor(id: String, subString: String, sendString: String) extends RobotActor(id, subString, sendString) {
-  override msg : String
+  sealed trait Status
+  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[Status])))
+
+  def comandToZMessage(rc: RemoteCommand): ZMQMessage = {
+    val jsonString = pretty(render(Extraction.decompose(rc)))
+    ZMQMessage(immutable.Seq(ByteString(id + ".command"), ByteString(jsonString)))
+  }
+  override def receive: Receive = {
+    case rc : RemoteCommand => sendSocket ! comandToZMessage(rc)
+    case CheckAddress => sender	! AddressIsOk
+  }
 }
