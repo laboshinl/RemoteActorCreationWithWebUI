@@ -15,11 +15,8 @@ case object Tick
 class HeartBleed (remoteSystemHolders: List[ActorRef], timerVal: Int) extends Actor {
   var remoteSystems = new mutable.HashMap[ActorRef, Int]
   var remoteRouters = new mutable.HashMap[ActorRef, Int]
-
-
-  override def preStart() {
-    context.system.scheduler.schedule(timerVal second, timerVal second, self, Tick)
-  }
+  import context.dispatcher
+  val selfSender = context.system.scheduler.schedule(timerVal second, timerVal second, self, Tick)
 
   override def receive: Receive = {
     case Tick => refreshRemoteSystems
