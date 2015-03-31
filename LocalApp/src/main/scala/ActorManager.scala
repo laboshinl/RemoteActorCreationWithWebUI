@@ -11,8 +11,8 @@ import scala.concurrent.Await
 /**
  * Created by mentall on 15.03.15.
  */
-class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) extends Actor {
-  implicit val timeout: Timeout = 1 minute
+class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor {
+  implicit val timeout: Timeout = 2 second
   var logger = Logging.getLogger(context.system, self)
 
   var idToActorsMap = new scala.collection.mutable.HashMap[UUID, ActorRef]
@@ -39,7 +39,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     if (idToActorsMap.contains(id)){
       idToActorsMap(id) ! PoisonPill
       idToActorsMap -= id
-      RouterProvider ! DeleteClient(id)
+      routerManager ! DeleteClient(id)
       sender ! TaskResponse("Success", stringUUID)
     }
     else sender ! TaskResponse("Error", "NoSuchId")
@@ -50,10 +50,10 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     val clientId = UUID.randomUUID
 
     logger.debug("Create Actor for client: " + clientId.toString)
-    Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
+    Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
-        Await.result(RemoterActor ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
+        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
             idToActorsMap += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
