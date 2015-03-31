@@ -103,3 +103,13 @@ case class TaskResponse(Status: String, Result: String) extends Serializable
 
 @SerialVersionUID(228L)
 case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
+
+/**
+ * сообщения внутри JVM можно делать без сериализации
+ * @param remote
+ */
+
+case class RemoveActor(remote: ActorRef)
+
+@SerialVersionUID(229L)
+case class HeartBeat(remote: ActorRef) extends Serializable
