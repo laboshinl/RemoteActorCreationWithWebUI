@@ -10,42 +10,55 @@ import scala.concurrent.Await
 
 /**
  * Created by mentall on 15.03.15.
+ * 
+ * 
+ * Этот актор ответственен за создание и взаимодействие с акторами удаленной системы.
+ * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
 class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) extends Actor {
   implicit val timeout: Timeout = 1 minute
   var logger = Logging.getLogger(context.system, self)
 
-  var idToActorsMap = new scala.collection.mutable.HashMap[UUID, ActorRef]
+  var idToActor = new scala.collection.mutable.HashMap[UUID, ActorRef]
 
   override def receive: Receive = {
-    case ActorCreation(t) => createActorOnRemoteMachine(t)
-    case ActorTermination(id) => deleteActorOnRemoteMachine(id)
-    case SendMessageToActor(id, msg) => sendMessageToActorOnRemoteMachine(id, msg)
-    case rc: RemoteCommand => sendRemoteCommand(rc)
+    case ActorCreation(t) => createRemoteActor(t)
+    case ActorTermination(id) => deleteRemoteActor(id)
+    case SendMessageToActor(id, msg) => sendMessageToRemoteActor(id, msg)
+    case rc: RemoteCommand => sendCommandToRemoteActor(rc)
   }
 
-  def sendMessageToActorOnRemoteMachine(stringUUID: String, msg: String) = {
+  def sendMessageToRemoteActor(stringUUID: String, msg: String) = {
     val id = UUID.fromString(stringUUID)
-    if (idToActorsMap.contains(id)){
-      val res = Await.result(idToActorsMap(id) ? msg, timeout.duration)
+    if (idToActor.contains(id)){
+      val res = Await.result(idToActor(id) ? msg, timeout.duration)
       if (res.isInstanceOf[String]) sender ! res.toString
       else logger.debug("Actor's response in not string"); sender ! "Actor's response in not string"
     }
     else sender ! NoSuchId
   }
 
-  def deleteActorOnRemoteMachine(stringUUID: String) = {
+  def sendCommandToRemoteActor(command: RemoteCommand) = {
+    val id = UUID.fromString(command.clientUID)
+    if (idToActor.contains(id)) {
+      idToActor(id) ! TellYourIP
+      idToActor(id) ! command
+    }
+    else sender ! NoSuchId
+  }
+
+  def deleteRemoteActor(stringUUID: String) = {
     val id = UUID.fromString(stringUUID)
-    if (idToActorsMap.contains(id)){
-      idToActorsMap(id) ! PoisonPill
-      idToActorsMap -= id
+    if (idToActor.contains(id)){
+      idToActor(id) ! PoisonPill
+      idToActor -= id
       RouterProvider ! DeleteClient(id)
       sender ! TaskResponse("Success", stringUUID)
     }
     else sender ! TaskResponse("Error", "NoSuchId")
   }
 
-  def createActorOnRemoteMachine (actorType : String) = {
+  def createRemoteActor (actorType : String) = {
     val actorId  = UUID.randomUUID
     val clientId = UUID.randomUUID
 
@@ -56,7 +69,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
         Await.result(RemoterActor ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
-            idToActorsMap += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
+            idToActor += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
             sender ! ActorCreationSuccess("Success", clientId.toString, res.clientSubStr, res.sendString)
           case NonexistentActorType => {
             logger.error("Error: Wrong Actor Type")
@@ -67,14 +80,6 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
         logger.error("Error: No Routers")
         sender ! TaskResponse("Error", "Wrong Actor Type")
       }
-    }
-  }
-
-  def sendRemoteCommand(rc: RemoteCommand): Unit = {
-    val id = UUID.fromString(rc.clientUID)
-    if (idToActorsMap.contains(id)) {
-      idToActorsMap(id) ! TellYourIP
-      idToActorsMap(id) ! rc
     }
   }
 }

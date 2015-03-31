@@ -18,13 +18,13 @@ class Controller(val ActorManager     : ActorRef,
   val logger = Logging.getLogger(context.system, this)
 
   override def receive: Receive = {
-    case PlanActorCreation(actorType)     => planAction(ActorManager ? ActorCreation (actorType))
-    case PlanActorTermination(actorId)    => planAction(ActorManager ? ActorTermination(actorId))
-    // This is not planning but direct request of String answer
+    case PlanActorCreation(actorType)     => planAction(ActorManager     ? ActorCreation (actorType))
+    case PlanActorTermination(actorId)    => planAction(ActorManager     ? ActorTermination(actorId))
+    case PlanMachineStart                 => planAction(OpenstackManager ? MachineStart)
+    case PlanMachineTermination(vmId)     => planAction(OpenstackManager ? MachineTermination(vmId))
+
     case ActorIdAndMessageToJson(id, msg) => sender ! Await.result(ActorManager ? SendMessageToActor(id, msg), timeout.duration)
-    case rc: RemoteCommand => ActorManager ! rc
-    case PlanMachineStart             => planAction(OpenstackManager ? MachineStart)
-    case PlanMachineTermination(vmId) => planAction(OpenstackManager ? MachineTermination(vmId))
+    case command: RemoteCommand           => ActorManager ! command
   }
 
   def planAction(task : Future[Any]) = {

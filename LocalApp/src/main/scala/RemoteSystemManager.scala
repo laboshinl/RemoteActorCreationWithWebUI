@@ -32,16 +32,16 @@ class RemoteSystemManager extends Actor {
       waiter = sender
       remote ! CreateNewActor(t, id, subString, sendString)
     }
-    case ActorCreated(adr)                              =>  {logger.debug("Checking address"); adr ! CheckAddress}
-    case NonexistentActorType                           =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
-    case AddressIsOk                                    =>  {logger.debug("Address is ok"); waiter ! ActorCreated(sender)}
-    case StopSystem                                     =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
-    case ConnectionRequest                              =>  {
+    case ActorCreated(adr)                   =>  {logger.debug("Checking address"); adr ! CheckAddress}
+    case NonexistentActorType                =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
+    case AddressIsOk                         =>  {logger.debug("Address is ok"); waiter ! ActorCreated(sender)}
+    case StopSystem                          =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
+    case ConnectionRequest                   =>  {
       logger.info("Connection request")
       uniqueId += 1
       remoteSystems += ((uniqueId, sender))
       sender!Connected; sender ! TellYourIP
     }
-    case MyIPIs(ip)                                     =>  {logger.debug(ip)}
+    case MyIPIs(ip)                          =>  {logger.debug(ip)}
   }
 }
