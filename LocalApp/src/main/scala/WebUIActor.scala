@@ -50,7 +50,7 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
     path("command") {
       post{
         entity(as[RemoteCommand]) {
-          rc => complete{ sendCommandToRemoteActor(rc) }
+          rc => complete{ sendRemoteCommandToActor(rc) }
         }
       }
     }~
@@ -95,24 +95,15 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   }
 
   def planMachineCreation: ToResponseMarshallable = {
-<<<<<<< HEAD
-    Await.result(Controller ? PlanMachineStart, timeout.duration)match {
-      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`, "Machine creation is planned: " + id))
-=======
     Await.result(controller ? PlanMachineStart, timeout.duration)match {
       case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Machine creation is planned: " + id))
->>>>>>> 06319ef5d35e3acaf164cb14259b18dae5a45947
       case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
-<<<<<<< HEAD
-  def sendCommandToRemoteActor(rc: RemoteCommand): ToResponseMarshallable = {
-    Controller ! rc
-=======
+
   def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
     controller ! rc
->>>>>>> 06319ef5d35e3acaf164cb14259b18dae5a45947
     HttpResponse(entity = HttpEntity(`text/html`, "ok"))
   }
 
