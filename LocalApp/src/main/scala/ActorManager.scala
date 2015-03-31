@@ -15,8 +15,8 @@ import scala.concurrent.Await
  * Этот актор ответственен за создание и взаимодействие с акторами удаленной системы.
  * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
-class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) extends Actor {
-  implicit val timeout: Timeout = 1 minute
+class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor {
+  implicit val timeout: Timeout = 2 second
   var logger = Logging.getLogger(context.system, self)
 
   var idToActor = new scala.collection.mutable.HashMap[UUID, ActorRef]
@@ -52,7 +52,7 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     if (idToActor.contains(id)){
       idToActor(id) ! PoisonPill
       idToActor -= id
-      RouterProvider ! DeleteClient(id)
+      routerManager ! DeleteClient(id)
       sender ! TaskResponse("Success", stringUUID)
     }
     else sender ! TaskResponse("Error", "NoSuchId")
@@ -63,10 +63,10 @@ class ActorManager(val RouterProvider: ActorRef, val RemoterActor : ActorRef) ex
     val clientId = UUID.randomUUID
 
     logger.debug("Create Actor for client: " + clientId.toString)
-    Await.result((RouterProvider ? RegisterPair(clientId, actorId)), timeout.duration) match {
+    Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
-        Await.result(RemoterActor ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
+        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
             idToActor += ((clientId, createRes.asInstanceOf[ActorCreated].adr))

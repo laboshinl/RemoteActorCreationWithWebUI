@@ -19,9 +19,9 @@ class RouterManager extends Actor {
   var clientOfRouter      = new mutable.HashMap[UUID, ActorRef]
 
   @throws[Exception](classOf[Exception])
-  override def preStart(): Unit = logger.debug("Path : " + context.self.path.toString)
+  override def preStart(): Unit = logger.info("Path : {}", context.self.path.toString)
 
-  implicit val timeout: Timeout = 1 minute
+  implicit val timeout: Timeout = 2 second
 
   /**
    * роутер подключается как ремот система в данной функции

@@ -15,13 +15,13 @@ import spray.http._
 import MediaTypes._
 import language.postfixOps
 
-class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
+class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   extends HttpService with Json4sSupport with Actor
 {
   //Statements required by traits
   implicit def executionContext : ExecutionContextExecutor = actorRefFactory.dispatcher
   def actorRefFactory = context
-  implicit val timeout: Timeout = 1 minute
+  implicit val timeout: Timeout = 2 second
   val json4sFormats = DefaultFormats
   override def receive = runRoute(route)
 
@@ -65,21 +65,21 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
   }
 
   def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
-    Await.result(Controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
+    Await.result(controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
       case id : String  => Map("Status" -> "Success", "TaskId" -> id)
       case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def planActorDeletion(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(Controller ? PlanActorTermination(ar.Id), timeout.duration)match {
+    Await.result(controller ? PlanActorTermination(ar.Id), timeout.duration)match {
       case id : String  => Map("Status" -> "Success", "TaskId" -> id)
       case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def sendMessageToActorOnRemoteMachine(ar: ActorIdAndMessageToJson): ToResponseMarshallable = {
-    Await.result(Controller ? ar, timeout.duration) match {
+    Await.result(controller ? ar, timeout.duration) match {
       case msg : String  => HttpResponse(entity = HttpEntity(`text/html`, msg))
       case NoSuchId      => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
       case _             => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
@@ -87,7 +87,7 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
   }
 
   def planMachineDeletion(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(Controller ? PlanMachineTermination(ar.Id), timeout.duration) match {
+    Await.result(controller ? PlanMachineTermination(ar.Id), timeout.duration) match {
       case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
       case NoSuchId     => HttpResponse(entity = HttpEntity(`text/html`, "There is no vm with such id"))
       case _            => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
@@ -95,19 +95,29 @@ class WebUIActor(val Controller : ActorRef, val TaskManager : ActorRef)
   }
 
   def planMachineCreation: ToResponseMarshallable = {
+<<<<<<< HEAD
     Await.result(Controller ? PlanMachineStart, timeout.duration)match {
       case id : Long  => HttpResponse(entity = HttpEntity(`text/html`, "Machine creation is planned: " + id))
+=======
+    Await.result(controller ? PlanMachineStart, timeout.duration)match {
+      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Machine creation is planned: " + id))
+>>>>>>> 06319ef5d35e3acaf164cb14259b18dae5a45947
       case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
+<<<<<<< HEAD
   def sendCommandToRemoteActor(rc: RemoteCommand): ToResponseMarshallable = {
     Controller ! rc
+=======
+  def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
+    controller ! rc
+>>>>>>> 06319ef5d35e3acaf164cb14259b18dae5a45947
     HttpResponse(entity = HttpEntity(`text/html`, "ok"))
   }
 
   def getTaskStatus(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(TaskManager ? TaskStatus(ar.Id), timeout.duration) match{
+    Await.result(taskManager ? TaskStatus(ar.Id), timeout.duration) match{
       case TaskCompleted           => TaskResponse("Success", "")
       case TaskCompletedWithId(id) => TaskResponse("Success", id.toString)
       case TaskIncomplete          => TaskResponse("Incomplete", "")
