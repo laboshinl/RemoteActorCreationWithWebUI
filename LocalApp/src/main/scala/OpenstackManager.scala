@@ -25,7 +25,7 @@ class OpenstackManager extends Actor {
   override def receive = {
     case MachineStart => {
       val vmId = java.util.UUID.randomUUID.toString
-      val svr = os.compute().servers().boot(buildVMconfiguration(vmId))
+      val svr = os.compute().servers().boot(buildVMConfiguration(vmId))
       Servers += ((vmId, svr))
       logger.info("Open Stack Machine started...")
       sender ! TaskCompletedWithId(vmId)
@@ -42,7 +42,7 @@ class OpenstackManager extends Actor {
     case msg : String => logger.debug("Received msg: " + msg)
   }
 
-  def buildVMconfiguration(vmId: String) = {
+  def buildVMConfiguration(vmId: String) = {
     Builders.server().
       availabilityZone(config.getString("my.own.openstack-availibility-zone")).
       name("actors-handler-" + vmId).

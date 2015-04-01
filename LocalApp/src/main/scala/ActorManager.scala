@@ -28,7 +28,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     case ActorTermination(id)         => deleteRemoteActor(id)
     case SendMessageToActor(id, msg)  => sendMessageToRemoteActor(id, msg)
     case rc: RemoteCommand            => sendCommandToRemoteActor(rc)
-    case event: DisassociatedEvent    => idToActor = disassociateSystem(event)
+    case event: DisassociatedEvent    => idToActor = disassociateActors(event)
   }
 
   def sendMessageToRemoteActor(stringUUID: String, msg: String) = {
@@ -54,7 +54,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
    * тут нагло фильтруется всё, что принадлежит умеревшей системе
    */
 
-  def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
+  def disassociateActors(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
     idToActor.filter{
       (tuple) =>
         if (

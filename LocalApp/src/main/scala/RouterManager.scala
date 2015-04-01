@@ -65,8 +65,7 @@ class RouterManager extends Actor {
    * апдейтит нагрузку роутеров
    */
 
-  def updateUsersAmountOnRouter(usersAmountOnRouter: mutable.ArrayBuffer[(Long, UUID)],
-                        usersAmount: Long, routerId: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
+  def updateUsersAmountOnRouter(usersAmount: Long, routerId: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
     usersAmountOnRouter += ((usersAmount + 1, routerId))
     usersAmountOnRouter.sorted
   }
