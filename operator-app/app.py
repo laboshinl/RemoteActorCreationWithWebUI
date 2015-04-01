@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+# sudo apt-get install python3-pyqt5 pyqt5-dev-tools sip-dev
+# sudo pip3 install requests
+
 import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QGridLayout,
  QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QLineEdit, QLabel)
