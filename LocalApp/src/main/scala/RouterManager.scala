@@ -15,11 +15,13 @@ class RouterManager extends Actor {
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
   // загрузка роутера (число обслуживаемых юзеров, роутер)
   var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, UUID)]
-  var routerUUIDmap       = new mutable.HashMap[UUID, ActorRef]
+  var routerUUIDMap       = new mutable.HashMap[UUID, ActorRef]
   var clientOfRouter      = new mutable.HashMap[UUID, ActorRef]
 
   @throws[Exception](classOf[Exception])
-  override def preStart(): Unit = logger.info("Path : {}", context.self.path.toString)
+  override def preStart(): Unit = logger.debug("Path : {}", context.self.path)
+  
+  def getRouterCount : Int = usersAmountOnRouter.size
 
   implicit val timeout: Timeout = 2 second
 
@@ -33,7 +35,7 @@ class RouterManager extends Actor {
   def connectRouter(sender: ActorRef) = {
     logger.info("Connection request")
     val uniqueId = UUID.randomUUID()
-    routerUUIDmap       += ((uniqueId, sender))
+    routerUUIDMap       += ((uniqueId, sender))
     usersAmountOnRouter += ((0, uniqueId))
     usersAmountOnRouter = usersAmountOnRouter.sorted
     logger.debug("Sorted List : " + usersAmountOnRouter.toString)
@@ -41,39 +43,65 @@ class RouterManager extends Actor {
   }
 
   /**
-   * Http сервер при запросе регистрации от Http клиента берёт id клиента, генерит id автора
-   * запрашивает у роутера данный метод, стартует актора с коннетк стрингом и созданнымм
-   * id. Как-то так это будет происходить.
+   * рефакторнинг выделением методов
+   * общаемся только с роутером
+   */
+
+  def registerPairOnRemoteRouter(router: ActorRef, pair: RegisterPair): (String, String, String) = {
+    val clientFuture  = (router ? SetMessage(pair.actorId))
+    val actorFuture   = (router ? SetMessage(pair.clientId))
+    val connectFuture = (router ? GetSendString)
+    //футуры выполняются параллельно, потом собираются результаты, вроди как,
+    //именно то, что я хотел
+    val clientStr     = Await.result(clientFuture, timeout.duration).asInstanceOf[String]
+    val actorStr      = Await.result(actorFuture, timeout.duration).asInstanceOf[String]
+    val connectString = Await.result(connectFuture, timeout.duration).asInstanceOf[String]
+    router ! AddPair(pair.clientId, pair.actorId)
+    (clientStr, actorStr, connectString)
+  }
+
+  /**
+   * чистая функция (ну люблю я чистоту, что поделать)
+   * апдейтит нагрузку роутеров
+   * @param usersAmountOnRouter
+   * @param usersAmount
+   * @param routerId
+   * @return
+   */
+
+  def updateusersAmountOnRouter(usersAmountOnRouter: mutable.ArrayBuffer[(Long, UUID)],
+                        usersAmount: Long, routerId: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
+    usersAmountOnRouter += ((usersAmount + 1, routerId))
+    usersAmountOnRouter.sorted
+  }
+
+  /**
+   * Регистрация пары клиентов происходит так:
+   * 1. получаем роутера с наименьшей загрузкой
+   * 2. говорим, что добавим на него юзера
+   * 3. регистрируем клиента на роутере, получаем адрес pub
+   * 4. регистрируем актора на роутере, получаем адрес pub
+   * 5. получаем для них адрес куда отправлять сообщения
+   * 6. говорим роутеру связать пару клиентов
+   * 7. отдаём всё полученное запросившему регистрацию
    * @param sender
    */
 
   def registerPair(sender : ActorRef, pair : RegisterPair) = {
-    logger.debug("Registering pair : " + pair.clientId + " " + pair.actorId)
+    logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
     if (usersAmountOnRouter.size > 0) {
-      logger.debug("Routers Load before register: " + usersAmountOnRouter.toString)
       //get router with minimum users
-      val first = usersAmountOnRouter.remove(0)
-      val routerId = first._2
-      val usersAmount = first._1
+      val (usersAmount, routerId) = usersAmountOnRouter.remove(0)
       //get router ref
-      val router = routerUUIDmap(routerId)
-      //adding user for router
-      usersAmountOnRouter += ((usersAmount + 1, routerId))
-      //sorting list
-      usersAmountOnRouter = usersAmountOnRouter.sorted
-      logger.debug("Routers Load after register: " + usersAmountOnRouter.toString)
-      logger.debug("Remote Router: " + router.toString)
+      val router = routerUUIDMap(routerId)
+      //adding new user to usersAmountOnRouter
+      usersAmountOnRouter = updateusersAmountOnRouter(usersAmountOnRouter, usersAmount, routerId)
       //register new id's on router
-      val respForClient = Await.result((router ? SetMessage(pair.actorId)), timeout.duration)
-      val respForActor = Await.result((router ? SetMessage(pair.clientId)), timeout.duration)
-      val respForSendString = Await.result((router ? GetSendString), timeout.duration)
-      val clientStr = respForClient.asInstanceOf[String]
-      val actorStr = respForActor.asInstanceOf[String]
-      val connectString = respForSendString.asInstanceOf[String]
-      router ! AddPair(pair.clientId, pair.actorId)
-      logger.debug("Router response : (client: " + clientStr + " " + actorStr + ")")
+      val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
       clientOfRouter += ((pair.clientId, router))
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
+      logger.debug("Pair registered: (clientStr: {}, actorStr: {}, sendStr: {}) \n Routers load: {}",
+                   clientStr, actorStr, connectString, usersAmountOnRouter)
       sender ! PairRegistered(clientStr, actorStr, connectString)
     } else {
       //если нет роутеров, то ничего не остаётся как послать клиента.
@@ -92,8 +120,7 @@ class RouterManager extends Actor {
     case ConnectionRequest    => connectRouter(sender)
     case pair: RegisterPair   => registerPair(sender, pair)
     case msg : DeleteClient   => deleteClient(msg)
-    //TODO: remove pair request!
-    case msg => logger.debug("Unknown Message: " + msg.toString)
+    case msg => logger.debug("Unknown Message: {}", msg)
   }
 
 }
