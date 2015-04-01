@@ -26,6 +26,8 @@ object Boot extends App {
     timeout.duration).asInstanceOf[ActorRef]
   val web           = Await.result((supervisor ? Props(classOf[WebUIActor], controller, taskManager)),
     timeout.duration).asInstanceOf[ActorRef]
+  val heartBleed    = Await.result((supervisor ? Props(classOf[HeartBleed], List(remoteSystem, routerManager, actorManager))),
+    timeout.duration).asInstanceOf[ActorRef]
 
   val config = ConfigFactory.load()
   IO(Http) ! Http.Bind(

@@ -1,5 +1,10 @@
+import java.util.UUID
+
 import akka.actor.{ActorRef, Actor}
 import akka.event.Logging
+import akka.remote.DisassociatedEvent
+
+import scala.collection.mutable
 
 /**
  * Created by mentall on 12.02.15.
@@ -11,15 +16,27 @@ import akka.event.Logging
 class RemoteSystemManager extends Actor {
   var waiter : ActorRef = null
   val logger = Logging.getLogger(context.system, self)
-  var remoteSystems = new scala.collection.mutable.HashMap[Long, ActorRef]
-  var uniqueId : Long = 0
-
+  var remoteSystems = new mutable.HashMap[UUID, ActorRef]
   logger.info("Remoter started")
 
   def remote : ActorRef = {
-    val r = scala.util.Random.nextInt(remoteSystems.size) + 1
+    val r = scala.util.Random.nextInt(remoteSystems.size)
     logger.debug("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
-    remoteSystems(r)
+    remoteSystems((remoteSystems.keySet.toArray).apply(r))
+  }
+
+  def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
+    remoteSystems.filter{
+      (tuple) =>
+        if (
+          tuple._2.path.address.system.equals(disassociatedEvent.remoteAddress.system) &&
+          tuple._2.path.address.port.equals(disassociatedEvent.remoteAddress.port) &&
+          tuple._2.path.address.host.equals(disassociatedEvent.remoteAddress.host)
+        ) {
+          logger.debug("Deleting actor: {}", tuple._2)
+          false
+        } else true
+    }
   }
 
   override def receive: Receive = {
@@ -38,10 +55,11 @@ class RemoteSystemManager extends Actor {
     case StopSystem                          =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
     case ConnectionRequest                   =>  {
       logger.info("Connection request")
-      uniqueId += 1
-      remoteSystems += ((uniqueId, sender))
-      sender!Connected; sender ! TellYourIP
+      val uUID = UUID.randomUUID()
+      remoteSystems += ((uUID, sender))
+      sender ! Connected; sender ! TellYourIP
     }
+    case event: DisassociatedEvent           =>  remoteSystems = disassociateSystem(event)
     case MyIPIs(ip)                          =>  {logger.debug(ip)}
   }
 }

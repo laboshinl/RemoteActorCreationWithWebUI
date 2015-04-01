@@ -2,6 +2,7 @@ import java.util.UUID
 
 import akka.actor.{ActorRef, Actor}
 import akka.event.{Logging, LoggingAdapter}
+import akka.remote.DisassociatedEvent
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.collection.mutable
@@ -81,6 +82,45 @@ class RouterManager extends Actor {
    * 7. отдаём всё полученное запросившему регистрацию
    */
 
+  def updateUsersAmount(uUID: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
+    usersAmountOnRouter.filter{
+      (tuple) =>
+        if (tuple._2 == uUID)
+          false
+        else true
+    }
+  }
+
+  /**
+   * Нужно придумать что делать с юзерами, которые висят на этом роутере.
+   * Пока они просто теряют связь :(
+   * Можно в наглую прибить всех акторов в ремот системах, которые были подключены к данному роутеру,
+   * а всем клиентам сказать чтоб переподключились, но это хреновый вей.
+   * Нужно как-то перебрасывать всех клиентов с роутера на роутер, а как пока не очень понятно
+   * С учётом того, что клиент вообще висит на http это ваще почти нереально Оо
+   * Ваши предложения и пожелания приветствуются!
+   * В целом, есть только одна мысль - поддержитвать с клиента хертбит до актора, если не дошло - просить перезапустить
+   * актора. Локалапп должен сам разобраться кто отвалился и в случае, если отвалилась ремотсистема - перезапустить актора, сообщив ему
+   * все настройки соединения, или, если отвалился роутер, то перерегистрировать пару на новом роутере, если отвалилсь оба (возможно и так) то надо просто снова
+   * повторить процесс логина в систему. Определить состояние можно оп внутренним признакам, т.к. всё состояние у нас хранится в элементах локалаппа
+   * как-то так. Хреновасенько конечно, но лучше чем ничего.
+   */
+
+  def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
+    routerUUIDMap.filter{
+      (tuple) =>
+        if (
+          tuple._2.path.address.system.equals(disassociatedEvent.remoteAddress.system) &&
+            tuple._2.path.address.port.equals(disassociatedEvent.remoteAddress.port) &&
+            tuple._2.path.address.host.equals(disassociatedEvent.remoteAddress.host)
+        ) {
+          logger.debug("Deleting actor: {}", tuple._2)
+          usersAmountOnRouter = updateUsersAmount(tuple._1)
+          false
+        } else true
+    }
+  }
+
   def registerPair(sender : ActorRef, pair : RegisterPair) = {
     logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
     if (usersAmountOnRouter.size > 0) {
@@ -111,10 +151,13 @@ class RouterManager extends Actor {
   }
 
   override def receive : Receive = {
-    case ConnectionRequest    => connectRouter(sender())
-    case pair: RegisterPair   => registerPair(sender(), pair)
-    case msg : DeleteClient   => deleteClient(msg)
-    case msg => logger.debug("Unknown Message: {}", msg)
+    case ConnectionRequest            => connectRouter(sender())
+    case pair: RegisterPair           => registerPair(sender(), pair)
+    case msg : DeleteClient           => deleteClient(msg)
+    case event: DisassociatedEvent    => routerUUIDMap = disassociateSystem(event)
+    // да, да, я не знаю как в функциональщине можно работать с мутабл коллекциями,
+    // я буду писать чистые функции, ибо нефиг.
+    case msg                          => logger.debug("Unknown Message: {}", msg)
   }
 
 }

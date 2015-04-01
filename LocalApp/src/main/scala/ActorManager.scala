@@ -2,6 +2,8 @@ import java.util.UUID
 
 import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.event.Logging
+import akka.remote.DisassociatedEvent
+import scala.collection.mutable
 import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
@@ -22,10 +24,11 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
   var idToActor = new scala.collection.mutable.HashMap[UUID, ActorRef]
 
   override def receive: Receive = {
-    case ActorCreation(t) => createRemoteActor(t)
-    case ActorTermination(id) => deleteRemoteActor(id)
-    case SendMessageToActor(id, msg) => sendMessageToRemoteActor(id, msg)
-    case rc: RemoteCommand => sendCommandToRemoteActor(rc)
+    case ActorCreation(t)             => createRemoteActor(t)
+    case ActorTermination(id)         => deleteRemoteActor(id)
+    case SendMessageToActor(id, msg)  => sendMessageToRemoteActor(id, msg)
+    case rc: RemoteCommand            => sendCommandToRemoteActor(rc)
+    case event: DisassociatedEvent    => idToActor = disassociateSystem(event)
   }
 
   def sendMessageToRemoteActor(stringUUID: String, msg: String) = {
@@ -45,6 +48,25 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
       idToActor(id) ! command
     }
     else sender ! NoSuchId
+  }
+
+  /**
+   * тут нагло фильтруется всё, что принадлежит умеревшей системе
+   */
+
+  def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
+    idToActor.filter{
+      (tuple) =>
+        if (
+          // иначе похоже никак. Связка имени системы, ип и адреса по идее уникальна.
+          tuple._2.path.address.system.equals(disassociatedEvent.remoteAddress.system) &&
+            tuple._2.path.address.port.equals(disassociatedEvent.remoteAddress.port) &&
+            tuple._2.path.address.host.equals(disassociatedEvent.remoteAddress.host)
+        ) {
+          logger.debug("Deleting actor: {}", tuple._2)
+          false
+        } else true
+    }
   }
 
   def deleteRemoteActor(stringUUID: String) = {
