@@ -128,7 +128,7 @@ class RouterManager extends Actor {
       //get router ref
       val router = routerUUIDMap(routerId)
       //adding new user to usersAmountOnRouter
-      usersAmountOnRouter = updateUsersAmountOnRouter(usersAmountOnRouter, usersAmount, routerId)
+      usersAmountOnRouter = updateUsersAmountOnRouter(usersAmount, routerId)
       //register new id's on router
       val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
       clientOfRouter += ((pair.clientId, router))

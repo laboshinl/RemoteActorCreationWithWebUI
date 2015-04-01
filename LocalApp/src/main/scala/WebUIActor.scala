@@ -103,7 +103,13 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
 
 
   def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
-    controller ! rc
+    println()
+    println()
+    println(rc.clientUID)
+    println(rc.command)
+    println()
+    println()
+//    controller ! rc
     HttpResponse(entity = HttpEntity(`text/html`, "ok"))
   }
 

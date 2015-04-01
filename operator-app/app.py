@@ -5,6 +5,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton,
  QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QLineEdit, QLabel)
 import json
+import requests
 
 
 class Example(QWidget):
@@ -12,8 +13,7 @@ class Example(QWidget):
     def __init__(self):
         super().__init__()
         
-        self.initUI()
-        
+        self.initUI()        
         
     def initUI(self):        
         self.setGeometry(300, 300, 300, 220)
@@ -24,14 +24,14 @@ class Example(QWidget):
         ipLayout      = QHBoxLayout(self)
         uuidLayout    = QHBoxLayout(self)
 
-        ipEdit    = QLineEdit()
+        self.ipEdit    = QLineEdit('http://127.0.0.1:8080')
         ipTitle   = QLabel('IP:')
         ipLayout.addWidget(ipTitle)
-        ipLayout.addWidget(ipEdit)
-        uuidEdit  = QLineEdit()
+        ipLayout.addWidget(self.ipEdit)
+        self.uuidEdit  = QLineEdit()
         uuidTitle = QLabel('UUID:')
         uuidLayout.addWidget(uuidTitle)
-        uuidLayout.addWidget(uuidEdit)
+        uuidLayout.addWidget(self.uuidEdit)
 
         frwdBtn   = QPushButton('Forward', self)
         leftBtn   = QPushButton('Left', self)
@@ -50,9 +50,14 @@ class Example(QWidget):
 
         self.show()
 
+    def sendCommand(self, command):
+        data = {'clientUID': self.uuidEdit.text(), 'command': command, 'args':[]}
+        headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+        req = requests.post(self.ipEdit.text() + '/command', data=json.dumps(data), headers=headers)
+
     def buttonClicked(self):
         sender = self.sender()
-        sendCommand(sender.text())
+        self.sendCommand(sender.text())
 
     def closeEvent(self, event):        
         reply = QMessageBox.question(self, 'Message',
@@ -68,13 +73,9 @@ class Example(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-
-    def sendCommand(command):
-        pass
         
         
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     app = QApplication(sys.argv)
     ex = Example()
     sys.exit(app.exec_())  
