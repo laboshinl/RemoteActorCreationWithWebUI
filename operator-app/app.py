@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton,
+from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QGridLayout,
  QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QLineEdit, QLabel)
 import json
 import requests
@@ -20,29 +20,25 @@ class Example(QWidget):
         self.setWindowTitle('Operator app')
         self.center()    
 
-        buttonsLayout = QVBoxLayout(self)
-        ipLayout      = QHBoxLayout(self)
-        uuidLayout    = QHBoxLayout(self)
+        mainLayout    = QGridLayout(self)
 
         self.ipEdit    = QLineEdit('http://127.0.0.1:8080')
         ipTitle   = QLabel('IP:')
-        ipLayout.addWidget(ipTitle)
-        ipLayout.addWidget(self.ipEdit)
+        mainLayout.addWidget(ipTitle      , 0, 0)
+        mainLayout.addWidget(self.ipEdit  , 0, 1, 1, 3)
         self.uuidEdit  = QLineEdit()
         uuidTitle = QLabel('UUID:')
-        uuidLayout.addWidget(uuidTitle)
-        uuidLayout.addWidget(self.uuidEdit)
+        mainLayout.addWidget(uuidTitle    , 1, 0)
+        mainLayout.addWidget(self.uuidEdit, 1, 1, 1, 3)
 
         frwdBtn   = QPushButton('Forward', self)
         leftBtn   = QPushButton('Left', self)
         bkwdBtn   = QPushButton('Backward', self)
         rightBtn  = QPushButton('Right', self)
-        buttonsLayout.addLayout(ipLayout)
-        buttonsLayout.addLayout(uuidLayout)
-        buttonsLayout.addWidget(frwdBtn)
-        buttonsLayout.addWidget(leftBtn)
-        buttonsLayout.addWidget(bkwdBtn)
-        buttonsLayout.addWidget(rightBtn)
+        mainLayout.addWidget(frwdBtn, 3, 2)
+        mainLayout.addWidget(leftBtn, 4, 1)
+        mainLayout.addWidget(bkwdBtn, 4, 2)
+        mainLayout.addWidget(rightBtn, 4, 3)
         frwdBtn.clicked.connect(self.buttonClicked)
         leftBtn.clicked.connect(self.buttonClicked)
         bkwdBtn.clicked.connect(self.buttonClicked)
