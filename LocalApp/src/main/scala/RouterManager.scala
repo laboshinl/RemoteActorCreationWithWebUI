@@ -27,9 +27,8 @@ class RouterManager extends Actor {
 
   /**
    * роутер подключается как ремот система в данной функции
-   * заносим его в список известных remoteRouters и говорит о том что на нём
+   * заносим его в список известных remoteRouters и говорим о том что на нём
    * ещё никого нет ((0, uniqueId)) ((загрузка, роутер))
-   * @param sender
    */
 
   def connectRouter(sender: ActorRef) = {
@@ -48,9 +47,9 @@ class RouterManager extends Actor {
    */
 
   def registerPairOnRemoteRouter(router: ActorRef, pair: RegisterPair): (String, String, String) = {
-    val clientFuture  = (router ? SetMessage(pair.actorId))
-    val actorFuture   = (router ? SetMessage(pair.clientId))
-    val connectFuture = (router ? GetSendString)
+    val clientFuture  = router ? SetMessage(pair.actorId)
+    val actorFuture   = router ? SetMessage(pair.clientId)
+    val connectFuture = router ? GetSendString
     //футуры выполняются параллельно, потом собираются результаты, вроди как,
     //именно то, что я хотел
     val clientStr     = Await.result(clientFuture, timeout.duration).asInstanceOf[String]
@@ -63,13 +62,9 @@ class RouterManager extends Actor {
   /**
    * чистая функция (ну люблю я чистоту, что поделать)
    * апдейтит нагрузку роутеров
-   * @param usersAmountOnRouter
-   * @param usersAmount
-   * @param routerId
-   * @return
    */
 
-  def updateusersAmountOnRouter(usersAmountOnRouter: mutable.ArrayBuffer[(Long, UUID)],
+  def updateUsersAmountOnRouter(usersAmountOnRouter: mutable.ArrayBuffer[(Long, UUID)],
                         usersAmount: Long, routerId: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
     usersAmountOnRouter += ((usersAmount + 1, routerId))
     usersAmountOnRouter.sorted
@@ -84,7 +79,6 @@ class RouterManager extends Actor {
    * 5. получаем для них адрес куда отправлять сообщения
    * 6. говорим роутеру связать пару клиентов
    * 7. отдаём всё полученное запросившему регистрацию
-   * @param sender
    */
 
   def registerPair(sender : ActorRef, pair : RegisterPair) = {
@@ -95,7 +89,7 @@ class RouterManager extends Actor {
       //get router ref
       val router = routerUUIDMap(routerId)
       //adding new user to usersAmountOnRouter
-      usersAmountOnRouter = updateusersAmountOnRouter(usersAmountOnRouter, usersAmount, routerId)
+      usersAmountOnRouter = updateUsersAmountOnRouter(usersAmountOnRouter, usersAmount, routerId)
       //register new id's on router
       val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
       clientOfRouter += ((pair.clientId, router))
@@ -117,8 +111,8 @@ class RouterManager extends Actor {
   }
 
   override def receive : Receive = {
-    case ConnectionRequest    => connectRouter(sender)
-    case pair: RegisterPair   => registerPair(sender, pair)
+    case ConnectionRequest    => connectRouter(sender())
+    case pair: RegisterPair   => registerPair(sender(), pair)
     case msg : DeleteClient   => deleteClient(msg)
     case msg => logger.debug("Unknown Message: {}", msg)
   }
