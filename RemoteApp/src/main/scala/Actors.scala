@@ -46,6 +46,7 @@ class ParrotActor(id: String, subString: String, sendString: String) extends Rob
       sender ! msg + msg + msg + "!"
     }
     case CheckAddress => sender	! AddressIsOk
+    case rc : RemoteCommand => println("got command: "+ rc.command)
   }
 
   @throws[Exception](classOf[Exception])
