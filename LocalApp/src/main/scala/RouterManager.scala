@@ -37,16 +37,17 @@ class RouterManager extends Actor {
    */
 
   def connectRouter(sender: ActorRef, request: RouterConnectionRequest) = {
-    logger.info("Connection request")
-    val uniqueId = UUID.randomUUID()
-    routerUUIDMap       += ((uniqueId, sender))
-    usersAmountOnRouter += ((request.routingPairs.size, uniqueId))
-    usersAmountOnRouter = usersAmountOnRouter.sorted
-    request.routingPairs.keys.foreach{
-      uUID => clientOfRouter += ((uUID, sender))
+    if (!routerUUIDMap.contains(request.uUID)) {
+      logger.info("Connection request")
+      routerUUIDMap += ((request.uUID, sender))
+      usersAmountOnRouter += ((request.routingPairs.size, request.uUID))
+      usersAmountOnRouter = usersAmountOnRouter.sorted
+      request.routingPairs.keys.foreach {
+        uUID => clientOfRouter += ((uUID, sender))
+      }
+      logger.debug("Sorted List : " + usersAmountOnRouter.toString)
+      sender ! Connected
     }
-    logger.debug("Sorted List : " + usersAmountOnRouter.toString)
-    sender ! Connected
   }
 
   /**

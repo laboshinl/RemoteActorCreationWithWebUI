@@ -13,8 +13,9 @@ import scala.collection.mutable
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
-class RemoteSystemManager extends Actor {
+class RemoteSystemManager() extends Actor {
   var waiter : ActorRef = null
+  var actorManager: ActorRef = null
   val logger = Logging.getLogger(context.system, self)
   var remoteSystems = new mutable.HashMap[UUID, ActorRef]
   logger.info("Remoter started")
@@ -39,11 +40,16 @@ class RemoteSystemManager extends Actor {
     }
   }
 
-  def routerConnected(request: RouterConnectionRequest): Unit = {
-    logger.info("Connection request")
-    val uUID = UUID.randomUUID()
-    remoteSystems += ((uUID, sender))
-    sender ! Connected; sender ! TellYourIP
+  def onRemoteSystemConnection(request: RemoteConnectionRequest): Unit = {
+    if (actorManager != null) {
+      if (!remoteSystems.contains(request.uUID)) {
+        logger.info("Connection request")
+        remoteSystems += ((request.uUID, sender()))
+        actorManager ! request
+        sender ! Connected
+        sender ! TellYourIP
+      }
+    }
   }
 
   override def receive: Receive = {
@@ -53,17 +59,16 @@ class RemoteSystemManager extends Actor {
         logger.debug("Empty remoteSystemsList")
         sender ! NoRemoteSystems
       }
-      waiter = sender
+      waiter = sender()
       remote ! CreateNewActor(t, id, subString, sendString)
     }
     case ActorCreated(adr)                   =>  {logger.debug("Checking address"); adr ! CheckAddress}
     case NonexistentActorType                =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
     case AddressIsOk                         =>  {logger.debug("Address is ok"); waiter ! ActorCreated(sender)}
     case StopSystem                          =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
-    case req: RemoteConnectionRequest        =>  {
-
-    }
+    case req: RemoteConnectionRequest        =>  onRemoteSystemConnection(req)
     case event: DisassociatedEvent           =>  remoteSystems = disassociateSystem(event)
     case MyIPIs(ip)                          =>  {logger.debug(ip)}
+    case ActorManagerStarted                 =>  actorManager = sender()
   }
 }

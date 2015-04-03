@@ -36,7 +36,7 @@ case class MyIPIs (IP : String) extends Serializable
 case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
 
 @SerialVersionUID(229L)
-case class RemoteConnectionRequest(robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
 case object Reconnect
 @SerialVersionUID(250L)
 case class DeleteActor(actorUUID: UUID) extends Serializable

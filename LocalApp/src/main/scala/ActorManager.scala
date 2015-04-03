@@ -21,14 +21,30 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
   implicit val timeout: Timeout = 2 second
   var logger = Logging.getLogger(context.system, self)
 
-  var idToActor = new scala.collection.mutable.HashMap[UUID, ActorRef]
+  var idToActor = new mutable.HashMap[UUID, ActorRef]
+
+
+  @throws[Exception](classOf[Exception])
+  override def preStart(): Unit = {
+    super.preStart()
+    remoteSystemManager ! ActorManagerStarted
+  }
 
   override def receive: Receive = {
-    case ActorCreation(t)             => createRemoteActor(t)
-    case ActorTermination(id)         => deleteRemoteActor(id)
-    case SendMessageToActor(id, msg)  => sendMessageToRemoteActor(id, msg)
-    case rc: RemoteCommand            => sendCommandToRemoteActor(rc)
-    case event: DisassociatedEvent    => idToActor = disassociateActors(event)
+    case ActorCreation(t)                 => createRemoteActor(t)
+    case ActorTermination(id)             => deleteRemoteActor(id)
+    case SendMessageToActor(id, msg)      => sendMessageToRemoteActor(id, msg)
+    case rc: RemoteCommand                => sendCommandToRemoteActor(rc)
+    case event: DisassociatedEvent        => idToActor = disassociateActors(event)
+    case req: RemoteConnectionRequest     => updateOnRSConnect(req)
+  }
+
+  def updateOnRSConnect(req: RemoteConnectionRequest): Unit = {
+    req.robotsUUIDMap.foreach{
+      tuple =>
+        if (!idToActor.contains(tuple._1))
+          idToActor += (tuple)
+    }
   }
 
   def sendMessageToRemoteActor(stringUUID: String, msg: String) = {

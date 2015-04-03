@@ -21,8 +21,6 @@ case object CheckAddress extends Serializable
 case object AddressIsOk extends Serializable
 @SerialVersionUID(24L)
 case object StopSystem extends Serializable
-@SerialVersionUID(25L)
-case class RouterConnectionRequest(routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
 @SerialVersionUID(26L)
 case object Connected extends Serializable
 
@@ -107,3 +105,10 @@ case class RemoteCommand(clientUID: String, command: String, args: immutable.Lis
 /**
  * сообщения внутри JVM можно делать без сериализации
  */
+
+case object ActorManagerStarted
+
+@SerialVersionUID(229L)
+case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+@SerialVersionUID(230L)
+case class RouterConnectionRequest(uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable

@@ -22,7 +22,8 @@ object Main extends App {
   val supervisor    = system.actorOf(Props[Supervisor], "supervisor")
   val remoteActorCreator = Await.result((supervisor ? (Props[RemoteActorCreator], "RemoteActor")),
     timeout.duration).asInstanceOf[ActorRef]
-  Await.result((supervisor ? (Props(classOf[RemoteHeartBleed], system.name, List(remoteActorCreator)), "HeartBleed")),
+  val rootSystemName = ConfigFactory.load().getString("my.own.root-system-address")
+  Await.result((supervisor ? (Props(classOf[RemoteHeartBleed], rootSystemName, List(remoteActorCreator)), "HeartBleed")),
     timeout.duration)
   logger.info("Started...")
 }
@@ -47,6 +48,7 @@ class Supervisor extends Actor {
 
 
 class RemoteActorCreator extends Actor {
+  val myUUID = UUID.randomUUID()
   implicit val timeout: Timeout = 10 seconds
   val address = NetworkInterface.getNetworkInterfaces.next().getInetAddresses.toList.get(1).getHostAddress
   val logger = Logging.getLogger(context.system, this)
@@ -63,13 +65,14 @@ class RemoteActorCreator extends Actor {
 
   def connectToRootSystem(): Unit = {
     try {
-      remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
-      val connection = remote ? RemoteConnectionRequest(robotsUUIDMap)
+      logger.info("Trying to connect...")
+      remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
+        ConfigFactory.load().getString("my.own.master-name"))
+      val connection = remote ? RemoteConnectionRequest(myUUID, robotsUUIDMap)
       Await.result(connection, timeout.duration)
-    } catch {
-      case e: AskTimeoutException => logger.info("Retrying..."); connectToRootSystem()
-    } finally {
       logger.info("Connected...!")
+    } catch {
+      case e: Exception => logger.info("Retrying...");
     }
   }
 

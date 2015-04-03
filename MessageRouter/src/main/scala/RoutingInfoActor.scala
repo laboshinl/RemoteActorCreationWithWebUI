@@ -18,6 +18,7 @@ import scala.concurrent.duration._
 
 class RoutingInfoActor(val address : String, val port : String) extends Actor {
   implicit val timeout: Timeout = 10 seconds
+  val myUUID = UUID.randomUUID()
   var uniquePort = port.toInt + 1
   val zmqSystem = ZeroMQExtension(context.system)
   val logger: LoggingAdapter = Logging.getLogger(context.system, this)
@@ -29,13 +30,14 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
 
   def connectToRootSystem(): Unit = {
     try {
-      remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
-      val connection = remote ? RouterConnectionRequest(routingPairs)
+      logger.info("Trying to connect...")
+      remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
+        ConfigFactory.load().getString("my.own.master-name"))
+      val connection = remote ? RouterConnectionRequest(myUUID, routingPairs)
       Await.result(connection, timeout.duration)
-    } catch {
-      case e: AskTimeoutException => logger.info("Retrying..."); connectToRootSystem()
-    } finally {
       logger.info("Connected...!")
+    } catch {
+      case e: Exception => logger.info("Retrying...");
     }
   }
 
