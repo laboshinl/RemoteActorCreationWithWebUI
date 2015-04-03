@@ -13,7 +13,8 @@ class RouterHeartBleed(actorSystemPath: String, connectedActors: List[ActorRef])
 
   override def receive = {
     case msg: DisassociatedEvent =>
-      if (msg.remoteAddress.system == actorSystemPath)
+      log.info("Disassociatng: {}...", msg.remoteAddress)
+      if (msg.remoteAddress.toString.equals(actorSystemPath))
         connectedActors.foreach{
           (actor) => actor ! Reconnect
         }

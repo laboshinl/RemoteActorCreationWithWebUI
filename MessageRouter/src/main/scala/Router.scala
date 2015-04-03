@@ -31,7 +31,8 @@ object Router extends App {
    */
   val receiver = Await.result((supervisor ? (Props(classOf[ReceiverActor], address, port, routingInfoActor), "ReceiverActor")),
     timeout.duration).asInstanceOf[ActorRef]
-  val heartBleed = Await.result((supervisor ? (Props(classOf[RouterHeartBleed], system.name, List(routingInfoActor)),
+  val rootSystemName = ConfigFactory.load().getString("my.own.root-system-address")
+  val heartBleed = Await.result((supervisor ? (Props(classOf[RouterHeartBleed], rootSystemName, List(routingInfoActor)),
     "HeartBleed")), timeout.duration).asInstanceOf[ActorRef]
   logger.debug("Router System Started")
 }
