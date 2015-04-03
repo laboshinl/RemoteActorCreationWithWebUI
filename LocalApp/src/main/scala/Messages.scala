@@ -8,7 +8,7 @@ import scala.concurrent.Future
  * Created by mentall on 13.02.15.
  */
 @SerialVersionUID(13L)
-case class CreateNewActor(var actorType: String, var actorId : String, var subString : String, var sendString : String) extends Serializable
+case class CreateNewActor(actorType: String, actorId : String, clientId: String, subString : String, sendString : String) extends Serializable
 @SerialVersionUID(12L)
 case class ActorCreated(adr: ActorRef) extends Serializable{
   override def toString = "ActorRef:"+adr
@@ -112,3 +112,8 @@ case object ActorManagerStarted
 case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
 @SerialVersionUID(230L)
 case class RouterConnectionRequest(uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
+
+@SerialVersionUID(251L)
+case class Ping(actorUUID: UUID) extends Serializable
+@SerialVersionUID(251L)
+case class Pong(actorUUID: UUID) extends Serializable

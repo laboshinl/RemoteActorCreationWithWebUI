@@ -23,7 +23,8 @@ class RemoteSystemManager() extends Actor {
   def remote : ActorRef = {
     val r = scala.util.Random.nextInt(remoteSystems.size)
     logger.debug("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
-    remoteSystems(remoteSystems.keySet.toArray.apply(r))
+    val uUID = remoteSystems.keySet.toArray.apply(r)
+    remoteSystems(uUID)
   }
 
   def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
@@ -44,7 +45,7 @@ class RemoteSystemManager() extends Actor {
     if (actorManager != null) {
       if (!remoteSystems.contains(request.uUID)) {
         logger.info("Connection request")
-        remoteSystems += ((request.uUID, sender()))
+        remoteSystems += ((request.uUID, sender))
         actorManager ! request
         sender ! Connected
         sender ! TellYourIP
@@ -53,14 +54,14 @@ class RemoteSystemManager() extends Actor {
   }
 
   override def receive: Receive = {
-    case CreateNewActor(t, id, subString, sendString)   =>  {
+    case msg: CreateNewActor   =>  {
       logger.debug("Got request on creation")
       if(remoteSystems.isEmpty) {
         logger.debug("Empty remoteSystemsList")
         sender ! NoRemoteSystems
       }
-      waiter = sender()
-      remote ! CreateNewActor(t, id, subString, sendString)
+      waiter = sender
+      remote ! msg
     }
     case ActorCreated(adr)                   =>  {logger.debug("Checking address"); adr ! CheckAddress}
     case NonexistentActorType                =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
@@ -68,7 +69,10 @@ class RemoteSystemManager() extends Actor {
     case StopSystem                          =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
     case req: RemoteConnectionRequest        =>  onRemoteSystemConnection(req)
     case event: DisassociatedEvent           =>  remoteSystems = disassociateSystem(event)
-    case MyIPIs(ip)                          =>  {logger.debug(ip)}
-    case ActorManagerStarted                 =>  actorManager = sender()
+    case MyIPIs(ip)                          =>  {
+      logger.debug(ip)
+    }
+    case ActorManagerStarted                 =>  actorManager = sender
+    case Ping                                =>  sender ! Pong
   }
 }

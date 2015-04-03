@@ -68,8 +68,9 @@ class RemoteActorCreator extends Actor {
       logger.info("Trying to connect...")
       remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
         ConfigFactory.load().getString("my.own.master-name"))
-      val connection = remote ? RemoteConnectionRequest(myUUID, robotsUUIDMap)
+      val connection = remote ? Ping
       Await.result(connection, timeout.duration)
+      remote ! RemoteConnectionRequest(myUUID, robotsUUIDMap)
       logger.info("Connected...!")
     } catch {
       case e: Exception => logger.info("Retrying...");
@@ -89,7 +90,7 @@ class RemoteActorCreator extends Actor {
   def createActor(createReq: CreateNewActor, props: Props): immutable.HashMap[UUID, ActorRef] = {
     val actor = context.system.actorOf(props)
     sender ! ActorCreated(actor)
-    robotsUUIDMap + ((UUID.fromString(createReq.actorId), actor))
+    robotsUUIDMap + ((UUID.fromString(createReq.clientId), actor))
   }
 
   def createActor(createReq: CreateNewActor): Unit = {
@@ -111,7 +112,7 @@ class RemoteActorCreator extends Actor {
   }
 
   override def receive = {
-    case CreateNewActor(t, id, subString, sendString) =>
+    case req: CreateNewActor => createActor(req)
     case StopSystem => context.system.scheduler.scheduleOnce(1.second) {
       logger.info("Terminating system..." + context.system.toString)
       context.system.shutdown()

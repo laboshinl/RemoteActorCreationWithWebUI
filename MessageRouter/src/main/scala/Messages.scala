@@ -32,3 +32,8 @@ case class DeleteClient(clientUUID : UUID) extends Serializable
 @SerialVersionUID(230L)
 case class RouterConnectionRequest(uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
 case object Reconnect
+
+@SerialVersionUID(251L)
+case class Ping(actorUUID: UUID) extends Serializable
+@SerialVersionUID(251L)
+case class Pong(actorUUID: UUID) extends Serializable

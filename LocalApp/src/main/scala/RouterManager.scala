@@ -24,7 +24,7 @@ class RouterManager extends Actor {
   
   def getRouterCount : Int = usersAmountOnRouter.size
 
-  implicit val timeout: Timeout = 2 second
+  implicit val timeout: Timeout = 5 seconds
 
   /**
    * роутер подключается как ремот система в данной функции
@@ -46,7 +46,6 @@ class RouterManager extends Actor {
         uUID => clientOfRouter += ((uUID, sender))
       }
       logger.debug("Sorted List : " + usersAmountOnRouter.toString)
-      sender ! Connected
     }
   }
 
@@ -56,14 +55,9 @@ class RouterManager extends Actor {
    */
 
   def registerPairOnRemoteRouter(router: ActorRef, pair: RegisterPair): (String, String, String) = {
-    val clientFuture  = router ? SetMessage(pair.actorId)
-    val actorFuture   = router ? SetMessage(pair.clientId)
-    val connectFuture = router ? GetSendString
-    //футуры выполняются параллельно, потом собираются результаты, вроди как,
-    //именно то, что я хотел
-    val clientStr     = Await.result(clientFuture, timeout.duration).asInstanceOf[String]
-    val actorStr      = Await.result(actorFuture, timeout.duration).asInstanceOf[String]
-    val connectString = Await.result(connectFuture, timeout.duration).asInstanceOf[String]
+    val clientStr     = Await.result((router ? SetMessage(pair.actorId)), timeout.duration).asInstanceOf[String]
+    val actorStr      = Await.result((router ? SetMessage(pair.clientId)), timeout.duration).asInstanceOf[String]
+    val connectString = Await.result((router ? GetSendString), timeout.duration).asInstanceOf[String]
     router ! AddPair(pair.clientId, pair.actorId)
     (clientStr, actorStr, connectString)
   }
@@ -165,7 +159,9 @@ class RouterManager extends Actor {
     case event: DisassociatedEvent    => routerUUIDMap = disassociateSystem(event)
     // да, да, я не знаю как в функциональщине можно работать с мутабл коллекциями,
     // я буду писать чистые функции, ибо нефиг.
+    case Ping                         => sender() ! Pong
     case msg                          => logger.debug("Unknown Message: {}", msg)
+
   }
 
 }

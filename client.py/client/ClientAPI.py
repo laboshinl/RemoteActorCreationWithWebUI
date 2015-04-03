@@ -46,6 +46,7 @@ class ClientAPI(object):
             data = {'Id': task_id}
             req = requests.get(url, data=json.dumps(data), headers=self.headers)
             status = req.json()['Status']
+            time.sleep(1)
         if req.json()['Status'] == 'Error':
             raise Exception("""Error on task with id: """ + task_id + " with reason: " + req.json()['Result'])
         return req

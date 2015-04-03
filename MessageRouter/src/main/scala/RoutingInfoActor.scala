@@ -33,8 +33,9 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
       logger.info("Trying to connect...")
       remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
         ConfigFactory.load().getString("my.own.master-name"))
-      val connection = remote ? RouterConnectionRequest(myUUID, routingPairs)
+      val connection = remote ? Ping
       Await.result(connection, timeout.duration)
+      remote ! RouterConnectionRequest(myUUID, routingPairs)
       logger.info("Connected...!")
     } catch {
       case e: Exception => logger.info("Retrying...");

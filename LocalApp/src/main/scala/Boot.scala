@@ -13,7 +13,7 @@ import scala.concurrent.Await
  */
 object Boot extends App {
   implicit val system = ActorSystem("LocalSystem")
-  implicit val timeout: Timeout = 2 second
+  implicit val timeout: Timeout = 5 second
   val logger = Logging.getLogger(system, this)
   val supervisor    = system.actorOf(Props[Supervisor], "supervisor")
   val taskManager   = Await.result((supervisor ? Props(classOf[TaskManager])),         timeout.duration).asInstanceOf[ActorRef]

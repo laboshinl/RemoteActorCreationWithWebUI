@@ -18,7 +18,7 @@ import scala.concurrent.Await
  * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
 class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor {
-  implicit val timeout: Timeout = 2 second
+  implicit val timeout: Timeout = 5 second
   var logger = Logging.getLogger(context.system, self)
 
   var idToActor = new mutable.HashMap[UUID, ActorRef]
@@ -104,7 +104,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
-        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
+        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString, clientId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
             idToActor += ((clientId, createRes.asInstanceOf[ActorCreated].adr))

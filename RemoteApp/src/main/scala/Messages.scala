@@ -9,7 +9,7 @@ import scala.collection.immutable
  * Created by mentall on 13.02.15.
  */
 @SerialVersionUID(13L)
-case class CreateNewActor(var actorType: String, var actorId : String, var subString : String, var sendString : String) extends Serializable
+case class CreateNewActor(actorType: String, actorId : String, clientId: String, subString : String, sendString : String) extends Serializable
 @SerialVersionUID(12L)
 case class ActorCreated(val adr: ActorRef) extends Serializable{
   override def toString = "ActorRef:"+adr
@@ -40,3 +40,8 @@ case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[
 case object Reconnect
 @SerialVersionUID(250L)
 case class DeleteActor(actorUUID: UUID) extends Serializable
+
+@SerialVersionUID(251L)
+case class Ping(actorUUID: UUID) extends Serializable
+@SerialVersionUID(251L)
+case class Pong(actorUUID: UUID) extends Serializable
