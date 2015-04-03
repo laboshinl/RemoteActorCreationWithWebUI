@@ -22,7 +22,7 @@ class RemoteSystemManager extends Actor {
   def remote : ActorRef = {
     val r = scala.util.Random.nextInt(remoteSystems.size)
     logger.debug("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
-    remoteSystems((remoteSystems.keySet.toArray).apply(r))
+    remoteSystems(remoteSystems.keySet.toArray.apply(r))
   }
 
   def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
@@ -39,6 +39,13 @@ class RemoteSystemManager extends Actor {
     }
   }
 
+  def routerConnected(request: RouterConnectionRequest): Unit = {
+    logger.info("Connection request")
+    val uUID = UUID.randomUUID()
+    remoteSystems += ((uUID, sender))
+    sender ! Connected; sender ! TellYourIP
+  }
+
   override def receive: Receive = {
     case CreateNewActor(t, id, subString, sendString)   =>  {
       logger.debug("Got request on creation")
@@ -53,11 +60,8 @@ class RemoteSystemManager extends Actor {
     case NonexistentActorType                =>  {logger.debug("Nonexsistent actor type"); waiter ! NonexistentActorType}
     case AddressIsOk                         =>  {logger.debug("Address is ok"); waiter ! ActorCreated(sender)}
     case StopSystem                          =>  {logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem}
-    case ConnectionRequest                   =>  {
-      logger.info("Connection request")
-      val uUID = UUID.randomUUID()
-      remoteSystems += ((uUID, sender))
-      sender ! Connected; sender ! TellYourIP
+    case req: RemoteConnectionRequest        =>  {
+
     }
     case event: DisassociatedEvent           =>  remoteSystems = disassociateSystem(event)
     case MyIPIs(ip)                          =>  {logger.debug(ip)}

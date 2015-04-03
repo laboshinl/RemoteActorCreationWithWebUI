@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-# sudo apt-get install python3-pyqt5 pyqt5-dev-tools sip-dev
+# sudo apt-get install python3-pyqt5 pyqt5-dev-tools sip-dev python3-pip
 # sudo pip3 install requests
 
 import sys

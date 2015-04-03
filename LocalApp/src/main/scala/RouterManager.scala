@@ -30,14 +30,21 @@ class RouterManager extends Actor {
    * роутер подключается как ремот система в данной функции
    * заносим его в список известных remoteRouters и говорим о том что на нём
    * ещё никого нет ((0, uniqueId)) ((загрузка, роутер))
+   *
+   * UPD: теперь у роутера спрашивается его состояние, если он был жив, а LocalApp упал, то
+   * роутер переподключится сам и скажет кто на нём есть из живых ребят. \
+   * Всё что выше - частный случай для первого включения.
    */
 
-  def connectRouter(sender: ActorRef) = {
+  def connectRouter(sender: ActorRef, request: RouterConnectionRequest) = {
     logger.info("Connection request")
     val uniqueId = UUID.randomUUID()
     routerUUIDMap       += ((uniqueId, sender))
-    usersAmountOnRouter += ((0, uniqueId))
+    usersAmountOnRouter += ((request.routingPairs.size, uniqueId))
     usersAmountOnRouter = usersAmountOnRouter.sorted
+    request.routingPairs.keys.foreach{
+      uUID => clientOfRouter += ((uUID, sender))
+    }
     logger.debug("Sorted List : " + usersAmountOnRouter.toString)
     sender ! Connected
   }
@@ -66,7 +73,7 @@ class RouterManager extends Actor {
    */
 
   def updateUsersAmountOnRouter(usersAmount: Long, routerId: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
-    usersAmountOnRouter += ((usersAmount + 1, routerId))
+    usersAmountOnRouter += ((usersAmount + 2, routerId))
     usersAmountOnRouter.sorted
   }
 
@@ -120,7 +127,7 @@ class RouterManager extends Actor {
     }
   }
 
-  def registerPair(sender : ActorRef, pair : RegisterPair) = {
+  def registerPair(sender: ActorRef, pair: RegisterPair) = {
     logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
     if (usersAmountOnRouter.size > 0) {
       //get router with minimum users
@@ -132,6 +139,7 @@ class RouterManager extends Actor {
       //register new id's on router
       val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
       clientOfRouter += ((pair.clientId, router))
+      clientOfRouter += ((pair.actorId, router))
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       logger.debug("Pair registered: (clientStr: {}, actorStr: {}, sendStr: {}) \n Routers load: {}",
                    clientStr, actorStr, connectString, usersAmountOnRouter)
@@ -150,7 +158,7 @@ class RouterManager extends Actor {
   }
 
   override def receive : Receive = {
-    case ConnectionRequest            => connectRouter(sender())
+    case req: RouterConnectionRequest => connectRouter(sender(), req)
     case pair: RegisterPair           => registerPair(sender(), pair)
     case msg : DeleteClient           => deleteClient(msg)
     case event: DisassociatedEvent    => routerUUIDMap = disassociateSystem(event)

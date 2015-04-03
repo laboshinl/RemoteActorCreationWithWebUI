@@ -1,4 +1,5 @@
 import java.io.Serializable
+import java.util.UUID
 
 import akka.actor.ActorRef
 
@@ -33,3 +34,9 @@ case class MyIPIs (IP : String) extends Serializable
 
 @SerialVersionUID(228L)
 case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
+
+@SerialVersionUID(229L)
+case class RemoteConnectionRequest(robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+case object Reconnect
+@SerialVersionUID(250L)
+case class DeleteActor(actorUUID: UUID) extends Serializable

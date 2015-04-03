@@ -1,3 +1,5 @@
+import java.util.UUID
+
 import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.event.Logging
 import akka.util.ByteString
@@ -11,7 +13,7 @@ import scala.collection.immutable
  * Created by mentall on 13.02.15.
  */
 
-abstract class RobotActor(id: String, subString: String, sendString: String) extends Actor {
+abstract class RobotActor(id: String, subString: String, sendString: String, master: ActorRef) extends Actor {
   val logger = Logging.getLogger(context.system, this)
   val subSocket = ZeroMQExtension(context.system).newSubSocket(Connect(subString), Listener(self), Subscribe(id))
   val sendSocket  = ZeroMQExtension(context.system).newDealerSocket(Array(Connect(sendString), Listener(self)))
@@ -20,10 +22,11 @@ abstract class RobotActor(id: String, subString: String, sendString: String) ext
   override def postStop(): Unit = {
     subSocket ! PoisonPill
     sendSocket ! PoisonPill
+    master ! DeleteActor(UUID.fromString(id))
   }
 }
 
-class ParrotActor(id: String, subString: String, sendString: String) extends RobotActor(id, subString, sendString) {
+class ParrotActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master) {
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -48,15 +51,9 @@ class ParrotActor(id: String, subString: String, sendString: String) extends Rob
     case CheckAddress => sender	! AddressIsOk
     case rc : RemoteCommand => println("got command: "+ rc.command)
   }
-
-  @throws[Exception](classOf[Exception])
-  override def postStop(): Unit = {
-    subSocket ! PoisonPill
-    sendSocket ! PoisonPill
-  }
 }
 
-class CommandProxyActor(id: String, subString: String, sendString: String) extends RobotActor(id, subString, sendString) {
+class CommandProxyActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master) {
   sealed trait Status
   implicit val formats = Serialization.formats(FullTypeHints(List(classOf[Status])))
 

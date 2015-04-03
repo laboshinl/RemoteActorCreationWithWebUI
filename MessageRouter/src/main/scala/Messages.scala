@@ -6,9 +6,11 @@ import java.util.UUID
 
 import akka.zeromq.ZMQMessage
 
+import scala.collection.mutable
+
 
 @SerialVersionUID(25L)
-case object ConnectionRequest extends Serializable
+case class RouterConnectionRequest(routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
 @SerialVersionUID(26L)
 case object Connected extends Serializable
 @SerialVersionUID(14L)
@@ -29,3 +31,5 @@ case class NoElementWithSuchKey() extends Serializable
 case class GetSendString() extends Serializable
 @SerialVersionUID(125L)
 case class DeleteClient(clientUUID : UUID) extends Serializable
+
+case object Reconnect

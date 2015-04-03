@@ -1,32 +1,49 @@
 import java.util.UUID
 
-import akka.actor.{PoisonPill, Props, ActorRef, Actor}
-import akka.actor.Actor.Receive
+import akka.actor._
 import akka.event.{Logging, LoggingAdapter}
-import akka.util.ByteString
-import akka.zeromq.{ZMQMessage, ZeroMQExtension, Bind}
+import akka.util.Timeout
+import akka.zeromq.{ZMQMessage, ZeroMQExtension}
 import com.typesafe.config.ConfigFactory
 
-import scala.collection.{immutable, mutable}
+import scala.collection.{mutable}
+import akka.pattern.{AskTimeoutException, ask}
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 /**
  * Created by baka on 18.03.15.
  */
 
 class RoutingInfoActor(val address : String, val port : String) extends Actor {
+  implicit val timeout: Timeout = 10 seconds
   var uniquePort = port.toInt + 1
   val zmqSystem = ZeroMQExtension(context.system)
-  val logger : LoggingAdapter = Logging.getLogger(context.system, this)
-  val remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
+  val logger: LoggingAdapter = Logging.getLogger(context.system, this)
+  var remote: ActorSelection = _
   val poolSize = ConfigFactory.load().getInt("my.own.pool-size")
-  remote ! ConnectionRequest
   var routingAddresses = new mutable.HashMap[Int, String]
   var routingInfo = new mutable.HashMap[Int, ActorRef]
   var routingPairs = new mutable.HashMap[UUID, UUID]
 
+  def connectToRootSystem(): Unit = {
+    try {
+      remote = context.actorSelection(ConfigFactory.load().getString("my.own.master-address"))
+      val connection = remote ? RouterConnectionRequest(routingPairs)
+      Await.result(connection, timeout.duration)
+    } catch {
+      case e: AskTimeoutException => logger.info("Retrying..."); connectToRootSystem()
+    } finally {
+      logger.info("Connected...!")
+    }
+  }
+
   override def preStart(): Unit = {
+    super.preStart()
+    connectToRootSystem()
     logger.debug("Publishers pool creation...")
-    (0 until poolSize).foreach { id => //WHAT THE HELL WITH THIS SYNTAX???
+    (0 until poolSize).foreach { id =>
       val bindString = "tcp://" + address + ":" + uniquePort.toString
       routingAddresses += ((id, bindString))
       routingInfo += ((id, context.system.actorOf(Props(classOf[Publisher], bindString, routingPairs))))
@@ -96,7 +113,7 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
     case msg : GetMessage       => replyUserPublisherConnectionString(msg)
     case msg : DeleteClient     => deleteUser(msg)
     case GetSendString          => replySendString()
-    case Connected              => logger.info("Connected to main actor system...")
+    case Reconnect              => connectToRootSystem()
     case msg : String           => logger.debug("Received string: {}", msg); sender ! msg
     case aNonMsg                => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }

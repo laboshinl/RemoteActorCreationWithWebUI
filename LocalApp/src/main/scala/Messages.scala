@@ -1,7 +1,7 @@
 import java.io.Serializable
 import java.util.UUID
 import akka.actor.ActorRef
-import scala.collection.immutable
+import scala.collection.{mutable, immutable}
 import scala.concurrent.Future
 
 /**
@@ -22,7 +22,7 @@ case object AddressIsOk extends Serializable
 @SerialVersionUID(24L)
 case object StopSystem extends Serializable
 @SerialVersionUID(25L)
-case object ConnectionRequest extends Serializable
+case class RouterConnectionRequest(routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
 @SerialVersionUID(26L)
 case object Connected extends Serializable
 
@@ -106,10 +106,4 @@ case class RemoteCommand(clientUID: String, command: String, args: immutable.Lis
 
 /**
  * сообщения внутри JVM можно делать без сериализации
- * @param remote
  */
-
-case class RemoveActor(remote: ActorRef)
-
-@SerialVersionUID(229L)
-case class HeartBeat(remote: ActorRef) extends Serializable
