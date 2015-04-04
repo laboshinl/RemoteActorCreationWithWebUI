@@ -7,21 +7,21 @@ echo "Additional monitors amount: $addit_monitors_amount"
 let "hor0 = addit_monitors_amount * 1366 + 360"
 
 echo "Compiling everything"
-cd LocalApp/
+cd App/LocalApp/
 sbt compile &
-cd ../RemoteApp/
+cd ../App/RemoteApp/
 sbt compile &
-cd ../MessageRouter/
+cd ../App/MessageRouter/
 sbt compile &
 while [[ $(ps -ax | grep "sbt compile" | wc -l) != 1 ]]; do
 	sleep 2
 done
 echo "Starting everything"
-cd ../LocalApp/
+cd ../App/LocalApp/
 xfce4-terminal -H -e "sbt run" --geometry=75x18+0+hor0
 sleep 3
-cd ../RemoteApp/
+cd ../App/RemoteApp/
 xfce4-terminal -H -e "sbt run" --geometry=75x18+0+hor0
 sleep 3
-cd ../MessageRouter/
+cd ../App/MessageRouter/
 xfce4-terminal -H -e "sbt run" --geometry=75x18+0+hor0

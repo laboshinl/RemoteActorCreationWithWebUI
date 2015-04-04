@@ -2,11 +2,11 @@
 
 if [ "$#" -eq 0 ]; then 
 	echo "Switch directory to RemoteActorCreationWithWebUI"
-	cd /home/debian/RemoteActorCreationWithWebUI
+	cd /home/ubuntu/RemoteActorCreationWithWebUI
 	echo "Updating files from repository"
 	git pull
 	echo "Switch directory to RemoteApp"
-	cd RemoteApp
+	cd App/RemoteApp
 	echo "Starting programm"
 	sbt run &
 elif [ "$1" == "all" ]; then 
