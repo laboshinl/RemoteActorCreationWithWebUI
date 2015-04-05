@@ -1,5 +1,3 @@
-import java.util.UUID
-
 import akka.actor.{PoisonPill, ActorRef, Actor}
 import akka.event.Logging
 import akka.util.ByteString
@@ -23,7 +21,7 @@ abstract class RobotActor(id: String, subString: String, sendString: String, mas
   override def postStop(): Unit = {
     subSocket ! PoisonPill
     sendSocket ! PoisonPill
-    master ! DeleteActor(UUID.fromString(id))
+    master ! DeleteMe
   }
 }
 

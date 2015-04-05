@@ -105,12 +105,8 @@ class RemoteActorCreator extends Actor {
     }
   }
 
-  def deleteActor(deleteMsg: DeleteActor): immutable.HashMap[UUID, ActorRef] = {
-    if (robotsUUIDMap.contains(deleteMsg.actorUUID)) {
-      robotsUUIDMap - deleteMsg.actorUUID
-    } else {
-      robotsUUIDMap
-    }
+  def deleteActor(actor: ActorRef): immutable.HashMap[UUID, ActorRef] = {
+    robotsUUIDMap.filter(_._2 != actor)
   }
 
   override def receive = {
@@ -119,8 +115,8 @@ class RemoteActorCreator extends Actor {
       logger.info("Terminating system..." + context.system.toString)
       context.system.shutdown()
     }
-    case Reconnect => connectToRootSystem()
-    case msg: DeleteActor => robotsUUIDMap = deleteActor(msg)
+    case Reconnect  => connectToRootSystem()
+    case DeleteMe   => robotsUUIDMap = deleteActor(sender())
     case TellYourIP => sender ! MyIPIs(address)
   }
 }

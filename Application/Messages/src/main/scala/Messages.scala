@@ -141,6 +141,3 @@ case object Reconnect
 /**
  * куски из ремот аппа
  */
-
-@SerialVersionUID(250L)
-case class DeleteActor(actorUUID: UUID) extends Serializable
