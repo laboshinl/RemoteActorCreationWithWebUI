@@ -34,16 +34,6 @@ case object TellYourIP extends Serializable
 @SerialVersionUID(28L)
 case class MyIPIs (IP : String) extends Serializable
 
-//types used in marshalling json
-@SerialVersionUID(78L)
-case class ActorIdAndMessageToJson(var id: String, var msg: String) extends Serializable
-case class ActorTypeToJson(var actorType: String) extends Serializable
-case class IdToJson(Id : String) extends Serializable
-
-@SerialVersionUID(34L)
-case object PlanMachineStart extends Serializable
-@SerialVersionUID(35L)
-case class PlanMachineTermination(vmId : String) extends Serializable
 @SerialVersionUID(84L)
 case object MachineStart extends Serializable
 @SerialVersionUID(85L)
@@ -77,16 +67,12 @@ case class TaskCompleted() extends Serializable
 case class TaskCompletedWithId(id: String) extends Serializable
 @SerialVersionUID(77L)
 case object NoSuchId extends Serializable
-@SerialVersionUID(71L)
-case class PlanActorCreation(actorType : String) extends Serializable
 @SerialVersionUID(72L)
 case class ManageTask(task : Future[Any]) extends Serializable
 @SerialVersionUID(73L)
 case class TaskStatus(taskId : String) extends Serializable
 @SerialVersionUID(79L)
 case class SendMessageToActor(actorId: String, msg: String) extends Serializable
-@SerialVersionUID(80L)
-case class PlanActorTermination(actorId: String) extends Serializable
 @SerialVersionUID(82L)
 case class ActorCreation(actorType : String) extends Serializable
 @SerialVersionUID(83L)
@@ -110,8 +96,6 @@ case class RemoteCommand(clientUID: String, command: String, args: immutable.Lis
 /**
  * сообщения внутри JVM можно делать без сериализации
  */
-
-case object ActorManagerStarted
 
 @SerialVersionUID(229L)
 case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable

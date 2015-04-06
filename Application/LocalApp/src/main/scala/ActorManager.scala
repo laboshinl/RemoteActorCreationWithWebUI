@@ -18,13 +18,16 @@ import core.messages._;
  * Этот актор ответственен за создание и взаимодействие с акторами удаленной системы.
  * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
-class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor {
+class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor with DisassociateSystem {
   implicit val timeout: Timeout = 5 second
   var logger = Logging.getLogger(context.system, self)
-
   var idToActor = new mutable.HashMap[UUID, ActorRef]
 
-
+  /**
+   * для восстановления состояния после падения
+   * необходимо, чтобы Remote System Manager должен знать о
+   * Actor Manager, чтобы отправлять ему сообщения.
+   */
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     super.preStart()
@@ -36,10 +39,15 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     case ActorTermination(id)             => deleteRemoteActor(id)
     case SendMessageToActor(id, msg)      => sendMessageToRemoteActor(id, msg)
     case rc: RemoteCommand                => sendCommandToRemoteActor(rc)
-    case event: DisassociatedEvent        => idToActor = disassociateActors(event)
+    case event: DisassociatedEvent        => idToActor = disassociateSystem(idToActor, event)
     case req: RemoteConnectionRequest     => updateOnRSConnect(req)
   }
 
+  /**
+   * нужно заапдейтить акторов из Remote System, если упала главна нода
+   * после того как она поднялась. Добавляем всех акторов из Remote System
+   * если их нет в списке.
+   */
   def updateOnRSConnect(req: RemoteConnectionRequest): Unit = {
     req.robotsUUIDMap.foreach{
       tuple =>
@@ -61,30 +69,14 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
   def sendCommandToRemoteActor(command: RemoteCommand) = {
     val id = UUID.fromString(command.clientUID)
     if (idToActor.contains(id)) {
-      idToActor(id) ! TellYourIP
       idToActor(id) ! command
     }
     else sender ! NoSuchId
   }
 
   /**
-   * тут нагло фильтруется всё, что принадлежит умеревшей системе
+   * если система отвалилась, то нагло фильтруется всё, что принадлежит умеревшей системе
    */
-
-  def disassociateActors(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
-    idToActor.filter{
-      (tuple) =>
-        if (
-          // иначе похоже никак. Связка имени системы, ип и адреса по идее уникальна.
-          tuple._2.path.address.system.equals(disassociatedEvent.remoteAddress.system) &&
-            tuple._2.path.address.port.equals(disassociatedEvent.remoteAddress.port) &&
-            tuple._2.path.address.host.equals(disassociatedEvent.remoteAddress.host)
-        ) {
-          logger.debug("Deleting actor: {}", tuple._2)
-          false
-        } else true
-    }
-  }
 
   def deleteRemoteActor(stringUUID: String) = {
     val id = UUID.fromString(stringUUID)
@@ -100,7 +92,6 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
   def createRemoteActor (actorType : String) = {
     val actorId  = UUID.randomUUID
     val clientId = UUID.randomUUID
-
     logger.debug("Create Actor for client: " + clientId.toString)
     Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
@@ -110,15 +101,13 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
             logger.debug("Actor created!")
             idToActor += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
             sender ! ActorCreationSuccess("Success", clientId.toString, res.clientSubStr, res.sendString)
-          case NonexistentActorType => {
+          case NonexistentActorType =>
             logger.error("Error: Wrong Actor Type")
             sender ! TaskResponse("Error", "Wrong Actor Type")
-          }
         }
-      case NoRouters => {
+      case NoRouters =>
         logger.error("Error: No Routers")
         sender ! TaskResponse("Error", "Wrong Actor Type")
-      }
     }
   }
 }

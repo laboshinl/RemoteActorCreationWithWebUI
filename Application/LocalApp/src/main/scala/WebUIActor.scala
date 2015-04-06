@@ -17,6 +17,12 @@ import language.postfixOps
 
 import core.messages._
 
+/**
+ * это говно не поддаётся рефакторингу и моему осознанию. Я не знаю что с этим делать.
+ * @param controller
+ * @param taskManager
+ */
+
 class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   extends HttpService with Json4sSupport with Actor
 {

@@ -10,7 +10,8 @@ import core.messages._
 /**
  * Created by mentall on 18.02.15.
  */
-class OpenstackManager extends Actor {
+
+class OpenStackManager extends Actor {
   val config = ConfigFactory.load()
   val logger = Logging.getLogger(context.system, self)
   val os : OSClient = OSFactory.builder()
@@ -24,26 +25,33 @@ class OpenstackManager extends Actor {
   networks.add(   config.getString("my.own.openstack-network")  )
   var Servers = new scala.collection.mutable.HashMap[String, Server]
 
+  def startMachine(): Unit = {
+    val vmId = java.util.UUID.randomUUID.toString
+    val svr = os.compute().servers().boot(buildVMConfiguration(vmId))
+    Servers += ((vmId, svr))
+    logger.info("Open Stack Machine started...")
+    sender ! TaskCompletedWithId(vmId)
+  }
+
+  def terminateMachine(vmId: MachineTermination): Unit = {
+    if(Servers.contains(vmId.vmId)) {
+      logger.info("Terminating server " + vmId.vmId)
+      os.compute().servers().delete(Servers(vmId.vmId).getId)
+      Servers -= vmId.vmId
+      logger.info("Open Stack Machine terminated...")
+      sender ! TaskCompletedWithId(vmId.vmId)
+    }
+  }
   override def receive = {
-    case MachineStart => {
-      val vmId = java.util.UUID.randomUUID.toString
-      val svr = os.compute().servers().boot(buildVMConfiguration(vmId))
-      Servers += ((vmId, svr))
-      logger.info("Open Stack Machine started...")
-      sender ! TaskCompletedWithId(vmId)
-    }
-    case MachineTermination(m) => {
-      if(Servers.contains(m)){
-        logger.info("Terminating server " + m)
-        os.compute().servers().delete(Servers(m).getId)
-        Servers -= m
-        logger.info("Open Stack Machine terminated...")
-        sender ! TaskCompletedWithId(m)
-      }
-    }
+    case MachineStart => startMachine()
+    case vmId: MachineTermination => terminateMachine(vmId)
     case msg : String => logger.debug("Received msg: " + msg)
   }
 
+  /**
+   * unused method? for delete?
+   * @return
+   */
   def buildVMConfiguration(vmId: String) = {
     Builders.server().
       availabilityZone(config.getString("my.own.openstack-availibility-zone")).

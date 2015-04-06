@@ -14,9 +14,8 @@ import core.messages._
 /**
  * Created by baka on 11.03.15.
  */
-class RouterManager extends Actor {
+class RouterManager extends Actor with DisassociateSystem {
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
-  // загрузка роутера (число обслуживаемых юзеров, роутер)
   var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, UUID)]
   var routerUUIDMap       = new mutable.HashMap[UUID, ActorRef]
   var clientOfRouter      = new mutable.HashMap[UUID, ActorRef]
@@ -109,21 +108,6 @@ class RouterManager extends Actor {
    * как-то так. Хреновасенько конечно, но лучше чем ничего.
    */
 
-  def disassociateSystem(disassociatedEvent: DisassociatedEvent): mutable.HashMap[UUID, ActorRef] = {
-    routerUUIDMap.filter{
-      (tuple) =>
-        if (
-          tuple._2.path.address.system.equals(disassociatedEvent.remoteAddress.system) &&
-            tuple._2.path.address.port.equals(disassociatedEvent.remoteAddress.port) &&
-            tuple._2.path.address.host.equals(disassociatedEvent.remoteAddress.host)
-        ) {
-          logger.debug("Deleting actor: {}", tuple._2)
-          usersAmountOnRouter = updateUsersAmount(tuple._1)
-          false
-        } else true
-    }
-  }
-
   def registerPair(sender: ActorRef, pair: RegisterPair) = {
     logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
     if (usersAmountOnRouter.size > 0) {
@@ -158,12 +142,8 @@ class RouterManager extends Actor {
     case req: RouterConnectionRequest => connectRouter(sender(), req)
     case pair: RegisterPair           => registerPair(sender(), pair)
     case msg : DeleteClient           => deleteClient(msg)
-    case event: DisassociatedEvent    => routerUUIDMap = disassociateSystem(event)
-    // да, да, я не знаю как в функциональщине можно работать с мутабл коллекциями,
-    // я буду писать чистые функции, ибо нефиг.
+    case event: DisassociatedEvent    => routerUUIDMap = disassociateSystem(routerUUIDMap, event)
     case Ping                         => sender() ! Pong
     case msg                          => logger.debug("Unknown Message: {}", msg)
-
   }
-
 }

@@ -10,16 +10,24 @@ import core.messages._
 class TaskManager extends Actor {
   var idToTasksMap = new scala.collection.mutable.HashMap[String, Future[Any]]
 
-  override def receive: Receive = {
-    case ManageTask(future) => {val id = java.util.UUID.randomUUID.toString; idToTasksMap += ((id, future)); sender ! id }
-    case TaskStatus(taskId) =>
-      if (idToTasksMap.contains(taskId))
-        if (idToTasksMap(taskId).isCompleted) {
-          Await.result(idToTasksMap(taskId), 1 minute) match{
-            case msg => sender ! msg
-          }
+  def manageTask(task: ManageTask): Unit = {
+    val id = java.util.UUID.randomUUID.toString
+    idToTasksMap += ((id, task.task))
+    sender ! id
+  }
+
+  def replyTaskStatus(taskStatus: TaskStatus): Unit = {
+    if (idToTasksMap.contains(taskStatus.taskId))
+      if (idToTasksMap(taskStatus.taskId).isCompleted)
+        Await.result(idToTasksMap(taskStatus.taskId), 1 minute) match {
+          case msg => sender ! msg
         }
-        else sender ! TaskIncomplete
-      else sender ! NoSuchId
+      else sender ! TaskIncomplete
+    else sender ! NoSuchId
+  }
+
+  override def receive: Receive = {
+    case task: ManageTask         => manageTask(task)
+    case taskStatus: TaskStatus   => replyTaskStatus(taskStatus)
   }
 }

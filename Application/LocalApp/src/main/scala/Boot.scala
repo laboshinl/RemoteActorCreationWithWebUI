@@ -19,7 +19,7 @@ object Boot extends App {
   val taskManager   = Await.result((supervisor ? Props(classOf[TaskManager])),         timeout.duration).asInstanceOf[ActorRef]
   val remoteSystem  = Await.result((supervisor ? Props(classOf[RemoteSystemManager])), timeout.duration).asInstanceOf[ActorRef]
   val routerManager = Await.result((supervisor ? Props(classOf[RouterManager])),       timeout.duration).asInstanceOf[ActorRef]
-  val OSManager     = Await.result((supervisor ? Props(classOf[OpenstackManager])),    timeout.duration).asInstanceOf[ActorRef]
+  val OSManager     = Await.result((supervisor ? Props(classOf[OpenStackManager])),    timeout.duration).asInstanceOf[ActorRef]
   val actorManager  = Await.result((supervisor ? Props(classOf[ActorManager], routerManager, remoteSystem)),
     timeout.duration).asInstanceOf[ActorRef]
   val controller    = Await.result((supervisor ? Props(classOf[Controller], actorManager, OSManager, taskManager)),
