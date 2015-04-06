@@ -16,7 +16,7 @@ import core.messages._
  */
 class RouterManager extends Actor with DisassociateSystem {
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
-  var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, UUID)]
+  var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, ActorRef)]
   var routerUUIDMap       = new mutable.HashMap[UUID, ActorRef]
   var clientOfRouter      = new mutable.HashMap[UUID, ActorRef]
 
@@ -41,7 +41,7 @@ class RouterManager extends Actor with DisassociateSystem {
     if (!routerUUIDMap.contains(request.uUID)) {
       logger.info("Connection request")
       routerUUIDMap += ((request.uUID, sender))
-      usersAmountOnRouter += ((request.routingPairs.size, request.uUID))
+      usersAmountOnRouter += ((request.routingPairs.size, sender))
       usersAmountOnRouter = usersAmountOnRouter.sorted
       request.routingPairs.keys.foreach {
         uUID => clientOfRouter += ((uUID, sender))
@@ -68,8 +68,8 @@ class RouterManager extends Actor with DisassociateSystem {
    * апдейтит нагрузку роутеров
    */
 
-  def updateUsersAmountOnRouter(usersAmount: Long, routerId: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
-    usersAmountOnRouter += ((usersAmount + 2, routerId))
+  def updateUsersAmountOnRouter(usersAmount: Long, router: ActorRef): mutable.ArrayBuffer[(Long, ActorRef)] = {
+    usersAmountOnRouter += ((usersAmount + 2, router))
     usersAmountOnRouter.sorted
   }
 
@@ -83,15 +83,6 @@ class RouterManager extends Actor with DisassociateSystem {
    * 6. говорим роутеру связать пару клиентов
    * 7. отдаём всё полученное запросившему регистрацию
    */
-
-  def updateUsersAmount(uUID: UUID): mutable.ArrayBuffer[(Long, UUID)] = {
-    usersAmountOnRouter.filter{
-      (tuple) =>
-        if (tuple._2 == uUID)
-          false
-        else true
-    }
-  }
 
   /**
    * Нужно придумать что делать с юзерами, которые висят на этом роутере.
@@ -112,11 +103,10 @@ class RouterManager extends Actor with DisassociateSystem {
     logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
     if (usersAmountOnRouter.size > 0) {
       //get router with minimum users
-      val (usersAmount, routerId) = usersAmountOnRouter.remove(0)
+      val (usersAmount, router) = usersAmountOnRouter.remove(0)
       //get router ref
-      val router = routerUUIDMap(routerId)
       //adding new user to usersAmountOnRouter
-      usersAmountOnRouter = updateUsersAmountOnRouter(usersAmount, routerId)
+      usersAmountOnRouter = updateUsersAmountOnRouter(usersAmount, router)
       //register new id's on router
       val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
       clientOfRouter += ((pair.clientId, router))
@@ -132,17 +122,37 @@ class RouterManager extends Actor with DisassociateSystem {
     }
   }
 
+  def unregisterPair(unregisterPair: UnregisterPair): Unit = {
+    deleteClient(DeleteClient(unregisterPair.actorId))
+    deleteClient(DeleteClient(unregisterPair.clientId))
+  }
+
   def deleteClient(msg : DeleteClient) = {
     if (clientOfRouter.contains(msg.clientUUID)) {
-      clientOfRouter(msg.clientUUID) ! msg
+      val router = clientOfRouter(msg.clientUUID)
+      router ! msg
+      clientOfRouter -= msg.clientUUID
+      for (i <- 0 to usersAmountOnRouter.size) {
+        if(usersAmountOnRouter(i)._2 == router) {
+          val tuple = usersAmountOnRouter(i)
+          usersAmountOnRouter(i) = (tuple._1 - 1, tuple._2)
+        }
+      }
     }
+  }
+
+  def updateOnDisassociateEvent(event: DisassociatedEvent): Unit = {
+    routerUUIDMap   = disassociateSystem(routerUUIDMap, event)
+    clientOfRouter  = disassociateSystem(clientOfRouter, event)
+    usersAmountOnRouter = disassociateUsers(usersAmountOnRouter, event)
   }
 
   override def receive : Receive = {
     case req: RouterConnectionRequest => connectRouter(sender(), req)
     case pair: RegisterPair           => registerPair(sender(), pair)
+    case pair: UnregisterPair         => unregisterPair(pair)
     case msg : DeleteClient           => deleteClient(msg)
-    case event: DisassociatedEvent    => routerUUIDMap = disassociateSystem(routerUUIDMap, event)
+    case event: DisassociatedEvent    => updateOnDisassociateEvent(event)
     case Ping                         => sender() ! Pong
     case msg                          => logger.debug("Unknown Message: {}", msg)
   }

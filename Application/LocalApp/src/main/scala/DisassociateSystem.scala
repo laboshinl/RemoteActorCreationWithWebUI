@@ -23,4 +23,15 @@ trait DisassociateSystem {
           )
     }
   }
+  def disassociateUsers(amountArray: mutable.ArrayBuffer[(Long, ActorRef)],
+                       disassociatedEvent: DisassociatedEvent): mutable.ArrayBuffer[(Long, ActorRef)] = {
+    amountArray.filter{
+      (tuple) =>
+        ! (
+          tuple._2.path.address.system.equals(disassociatedEvent.remoteAddress.system) &&
+            tuple._2.path.address.port.equals(disassociatedEvent.remoteAddress.port) &&
+            tuple._2.path.address.host.equals(disassociatedEvent.remoteAddress.host)
+          )
+    }
+  }
 }

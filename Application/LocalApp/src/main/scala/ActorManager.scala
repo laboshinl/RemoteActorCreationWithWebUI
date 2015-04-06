@@ -96,13 +96,15 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
-        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString, clientId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
+        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString,
+            clientId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
             idToActor += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
             sender ! ActorCreationSuccess("Success", clientId.toString, res.clientSubStr, res.sendString)
           case NonexistentActorType =>
             logger.error("Error: Wrong Actor Type")
+            routerManager ! UnregisterPair(clientId, actorId)
             sender ! TaskResponse("Error", "Wrong Actor Type")
         }
       case NoRouters =>

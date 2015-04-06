@@ -39,13 +39,6 @@ case object MachineStart extends Serializable
 @SerialVersionUID(85L)
 case class MachineTermination(vmId : String) extends Serializable
 
-@SerialVersionUID(39L)
-case class RegisterPair(clientId : UUID, actorId : UUID) extends Serializable
-@SerialVersionUID(40L)
-case class PairRegistered(clientSubStr : String, actorSubStr : String, sendString : String) extends Serializable
-@SerialVersionUID(41L)
-case object NoRouters extends Serializable
-
 @SerialVersionUID(14L)
 case class AddPair(clientId : UUID, actorId : UUID)
 @SerialVersionUID(15L)
