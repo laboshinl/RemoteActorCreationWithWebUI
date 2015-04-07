@@ -14,7 +14,7 @@ import core.messages._
 /**
  * Created by baka on 11.03.15.
  */
-class RouterManager extends Actor with DisassociateSystem {
+class RouterManager extends Actor with DisassociateSystem with RouterManagerMessages with GeneralMessages{
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
   var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, ActorRef)]
   var routerUUIDMap       = new mutable.HashMap[UUID, ActorRef]

@@ -14,7 +14,7 @@ import core.messages._
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
-class RemoteSystemManager() extends Actor with DisassociateSystem {
+class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSystemMessages with ActorManagerMessages with GeneralMessages{
   var waiter : ActorRef = null
   var actorManager: ActorRef = null
   val logger = Logging.getLogger(context.system, self)

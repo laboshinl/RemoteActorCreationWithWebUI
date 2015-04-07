@@ -25,7 +25,8 @@ abstract class RobotActor(id: String, subString: String, sendString: String, mas
   }
 }
 
-class ParrotActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master) {
+class ParrotActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master)
+with ActorManagerMessages{
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -52,7 +53,8 @@ class ParrotActor(id: String, subString: String, sendString: String, master: Act
   }
 }
 
-class CommandProxyActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master) {
+class CommandProxyActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master)
+with ActorManagerMessages{
   sealed trait Status
   implicit val formats = Serialization.formats(FullTypeHints(List(classOf[Status])))
 

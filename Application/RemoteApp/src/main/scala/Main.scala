@@ -49,7 +49,7 @@ class Supervisor extends Actor {
 
 
 
-class RemoteActorCreator extends Actor {
+class RemoteActorCreator extends Actor with ActorManagerMessages with GeneralMessages with RemoteSystemMessages with HeartBleedMessages{
   val myUUID = UUID.randomUUID()
   implicit val timeout: Timeout = 10 seconds
   val address = NetworkInterface.getNetworkInterfaces.next().getInetAddresses.toList.get(1).getHostAddress

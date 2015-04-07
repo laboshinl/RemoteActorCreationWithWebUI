@@ -11,7 +11,8 @@ import core.messages._
  * Created by mentall on 18.02.15.
  */
 
-class OpenStackManager extends Actor {
+class OpenStackManager extends Actor
+  with OpenstackManagerMessages with TaskManagerMessages{
   val config = ConfigFactory.load()
   val logger = Logging.getLogger(context.system, self)
   val os : OSClient = OSFactory.builder()
@@ -25,14 +26,17 @@ class OpenStackManager extends Actor {
   networks.add(   config.getString("my.own.openstack-network")  )
   var Servers = new scala.collection.mutable.HashMap[String, Server]
 
-  def startMachine(): Unit = {
+  def startMachine(image: String, namePrefix: String): String = {
     val vmId = java.util.UUID.randomUUID.toString
-    val svr = os.compute().servers().boot(buildVMConfiguration(vmId))
+    val svr = os.compute().servers().boot(buildVMConfiguration(vmId, image, namePrefix))
     Servers += ((vmId, svr))
     logger.info("Open Stack Machine started...")
-    sender ! TaskCompletedWithId(vmId)
+    vmId
   }
 
+  /*
+  TODO: Если машины нет в списке, то все рухнет
+   */
   def terminateMachine(vmId: MachineTermination): Unit = {
     if(Servers.contains(vmId.vmId)) {
       logger.info("Terminating server " + vmId.vmId)
@@ -42,22 +46,34 @@ class OpenStackManager extends Actor {
       sender ! TaskCompletedWithId(vmId.vmId)
     }
   }
+
+  /*
+  TODO: Переделать возвращаемое значение в кортеж или мап
+   */
   override def receive = {
-    case MachineStart => startMachine()
+    case ("startRemoteAppAndMessageRouter") => {
+      println("\n\nstartRemoteAppAndMessageRouter\n\n")
+      sender ! (
+        startMachine("my.own.openstack-remoteapp-image","remoteapp-"),
+        startMachine("my.own.openstack-router-image","router-")
+        )
+    }
+    case MachineStart => sender ! TaskCompletedWithId(startMachine("my.own.openstack-remoteapp-image","remoteapp-"))
     case vmId: MachineTermination => terminateMachine(vmId)
     case msg : String => logger.debug("Received msg: " + msg)
   }
 
   /**
    * unused method? for delete?
+   * It's used in startMachine
    * @return
    */
-  def buildVMConfiguration(vmId: String) = {
+  def buildVMConfiguration(vmId: String, image: String, namePrefix: String) = {
     Builders.server().
       availabilityZone(config.getString("my.own.openstack-availibility-zone")).
-      name("actors-handler-" + vmId).
+      name(namePrefix + vmId).
       flavor(config.getString("my.own.openstack-flavour")).
-      image(config.getString("my.own.openstack-image")).
+      image(config.getString(image)).
       keypairName(config.getString("my.own.openstack-key-pair")).
       networks(networks).build()
   }

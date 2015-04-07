@@ -7,7 +7,7 @@ import core.messages._
 /**
  * Created by mentall on 15.03.15.
  */
-class TaskManager extends Actor {
+class TaskManager extends Actor with TaskManagerMessages{
   var idToTasksMap = new scala.collection.mutable.HashMap[String, Future[Any]]
 
   def manageTask(task: ManageTask): Unit = {

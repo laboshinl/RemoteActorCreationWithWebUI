@@ -24,7 +24,7 @@ import core.messages._
  */
 
 class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
-  extends HttpService with Json4sSupport with Actor
+  extends HttpService with Json4sSupport with Actor with TaskManagerMessages with ActorManagerMessages
 {
   //Statements required by traits
   implicit def executionContext : ExecutionContextExecutor = actorRefFactory.dispatcher
@@ -69,6 +69,16 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
     }~
     path("task"){
       get{ entity(as[IdToJson]) { ar => respondWithMediaType(`application/json`){ complete{ getTaskStatus(ar) } } } }
+    }~
+    path("deploy-system"){
+      get{ complete{ runVMsWithRemoteAppAndMessageRouter } }
+    }
+  }
+
+  def runVMsWithRemoteAppAndMessageRouter : ToResponseMarshallable = {
+    Await.result(controller ? ("runVMsWithRemoteAppAndMessageRouter"), timeout.duration)match {
+      case id : String  => Map("Status" -> "Success", "TaskId" -> id)
+      case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
@@ -117,13 +127,18 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
     HttpResponse(entity = HttpEntity(`text/html`, "ok"))
   }
 
+  /*
+  TODO: Считаю, что вид надо унифицировать
+  Это повышает читаемость кода, из возвращаемого мапа будет видно, что просходит.
+  Зачем ActorCreationSuccess? Не должен ли success проверяться как результат Task?
+   */
   def getTaskStatus(ar: IdToJson): ToResponseMarshallable = {
     Await.result(taskManager ? TaskStatus(ar.Id), timeout.duration) match{
-      case TaskCompleted           => TaskResponse("Success", "")
-      case TaskCompletedWithId(id) => TaskResponse("Success", id.toString)
-      case TaskIncomplete          => TaskResponse("Incomplete", "")
-      case TaskFailed              => TaskResponse("Error", "Task failed")
-      case NoSuchId                => TaskResponse("Error", "No such Id")
+      case TaskCompleted           => Map("Status" -> "Success")
+      case TaskCompletedWithId(id) => Map("Status" -> "Success","TaskId" -> id.toString)
+      case TaskIncomplete          => Map("Status" -> "Incomplete")
+      case TaskFailed              => Map("Status" -> "Error", "Reason" -> "Task failed")
+      case NoSuchId                => Map("Status" -> "Error", "Reason" -> "No such Id")
       case result: ActorCreationSuccess  => result
       case result: TaskResponse    => result
       case msg: String             => TaskResponse("Error", msg)

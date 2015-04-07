@@ -18,7 +18,8 @@ import core.messages._;
  * Этот актор ответственен за создание и взаимодействие с акторами удаленной системы.
  * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
-class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor with DisassociateSystem {
+class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef)
+  extends Actor with ActorManagerMessages with TaskManagerMessages with DisassociateSystem with RouterManagerMessages{
   implicit val timeout: Timeout = 5 second
   var logger = Logging.getLogger(context.system, self)
   var idToActor = new mutable.HashMap[UUID, ActorRef]

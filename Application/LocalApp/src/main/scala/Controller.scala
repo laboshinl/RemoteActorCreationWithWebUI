@@ -12,13 +12,14 @@ import core.messages._
 class Controller(val actorManager     : ActorRef,
                  val openStackManager : ActorRef,
                  val taskManager      : ActorRef)
-  extends Actor
+  extends Actor with ActorManagerMessages with OpenstackManagerMessages with TaskManagerMessages
 {
 
   implicit val timeout: Timeout = 2 second
   val logger = Logging.getLogger(context.system, this)
 
   override def receive: Receive = {
+    case ("runVMsWithRemoteAppAndMessageRouter") => planAction(openStackManager ? ("startRemoteAppAndMessageRouter"))
     case PlanActorCreation(actorType)     => planAction(actorManager     ? ActorCreation (actorType))
     case PlanActorTermination(actorId)    => planAction(actorManager     ? ActorTermination(actorId))
     case PlanMachineStart                 => planAction(openStackManager ? MachineStart)
