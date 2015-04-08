@@ -1,3 +1,5 @@
+package LocalAppActors
+
 import java.io.Serializable
 import java.util.UUID
 

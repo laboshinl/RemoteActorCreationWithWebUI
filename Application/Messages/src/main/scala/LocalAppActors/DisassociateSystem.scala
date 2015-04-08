@@ -1,7 +1,10 @@
+package LocalAppActors
+
 import java.util.UUID
 
 import akka.actor.ActorRef
 import akka.remote.DisassociatedEvent
+
 import scala.collection.mutable
 
 /**

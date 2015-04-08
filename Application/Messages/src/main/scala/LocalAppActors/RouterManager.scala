@@ -1,15 +1,17 @@
+package LocalAppActors
+
 import java.util.UUID
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Actor, ActorRef}
 import akka.event.{Logging, LoggingAdapter}
+import akka.pattern.ask
 import akka.remote.DisassociatedEvent
 import akka.util.Timeout
-import scala.concurrent.duration._
+import core.messages._
+
 import scala.collection.mutable
 import scala.concurrent.Await
-import akka.pattern.ask
-
-import core.messages._
+import scala.concurrent.duration._
 
 /**
  * Created by baka on 11.03.15.

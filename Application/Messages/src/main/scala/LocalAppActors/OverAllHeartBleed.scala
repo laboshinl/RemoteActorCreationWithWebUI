@@ -1,4 +1,6 @@
-import akka.actor.{ActorLogging, ActorRef, Actor}
+package LocalAppActors
+
+import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.remote._
 /**
  * Created by baka on 31.03.15.

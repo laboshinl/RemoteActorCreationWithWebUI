@@ -1,10 +1,8 @@
+package LocalAppActors
+
 import akka.actor.Actor
 import akka.event.Logging
 import com.typesafe.config.ConfigFactory
-import org.openstack4j.api.{Builders, OSClient}
-import org.openstack4j.model.compute.Server
-import org.openstack4j.openstack.OSFactory
-
 import core.messages._
 
 /**

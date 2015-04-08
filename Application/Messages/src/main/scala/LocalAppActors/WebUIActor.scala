@@ -1,21 +1,18 @@
+package LocalAppActors
+
 /**
  * Created by mentall on 08.02.15.
  */
 
-import org.json4s.DefaultFormats
-import spray.httpx.Json4sSupport
-import spray.httpx.marshalling.ToResponseMarshallable
-import spray.routing.HttpService
-import scala.concurrent.{ExecutionContextExecutor, Future, Await}
-import scala.concurrent.duration._
-import akka.util.Timeout
 import akka.actor._
 import akka.pattern.ask
-import spray.http._
-import MediaTypes._
-import language.postfixOps
-
+import akka.util.Timeout
 import core.messages._
+import org.json4s.DefaultFormats
+
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContextExecutor}
+import scala.language.postfixOps
 
 /**
  * это говно не поддаётся рефакторингу и моему осознанию. Я не знаю что с этим делать.

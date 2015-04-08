@@ -1,8 +1,10 @@
+package LocalAppActors
+
 import akka.actor.Actor
+import core.messages._
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-
-import core.messages._
 
 /**
  * Created by mentall on 15.03.15.

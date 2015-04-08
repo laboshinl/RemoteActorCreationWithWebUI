@@ -1,15 +1,20 @@
+package LocalAppActors
+
+import java.io.Serializable
 import java.util.UUID
 
-import akka.actor.{PoisonPill, ActorRef, Actor}
+import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.event.Logging
-import akka.remote.DisassociatedEvent
-import scala.collection.mutable
-import scala.concurrent.duration._
 import akka.pattern.ask
+import akka.remote.DisassociatedEvent
 import akka.util.Timeout
-import scala.concurrent.Await
+import core.messages._
 
-import core.messages._;
+import scala.collection.{immutable, mutable}
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.concurrent.Future
+;
 
 /**
  * Created by mentall on 15.03.15.
@@ -18,6 +23,54 @@ import core.messages._;
  * Этот актор ответственен за создание и взаимодействие с акторами удаленной системы.
  * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
+
+trait ActorManagerMessages {
+  @SerialVersionUID(82L)
+  case class ActorCreation(actorType : String) extends Serializable
+  @SerialVersionUID(83L)
+  case class ActorTermination(actorId: String) extends Serializable
+  @SerialVersionUID(79L)
+  case class SendMessageToActor(actorId: String, msg: String) extends Serializable
+  @SerialVersionUID(228L)
+  case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
+  @SerialVersionUID(229L)
+  case class UpdateActors(robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+}
+
+// вся соль того что написано, в том, чтобы актор вызывающий эти функции ничего не знал про сообщения,
+// которые он отправляет
+
+object ActorManager extends ActorManagerMessages {
+  // я предлагаю делать так: если это call (в смысле нужен ответ, то функция пусть возвращает футуру
+  // тода норм будет делать Await.result(createActor(manager, "CommandProxy"), timeout.duration),
+  // хотя можно и внутри функции, никто не запрещает,
+  // но тогда надо передавать таймаут, а чот неохота, громоздко больно
+  def createActor(receiver: ActorRef, actorType: String): Future[Any] = {
+    receiver ? ActorCreation(actorType)
+  }
+
+  // cast остаётся просто cast-ом
+  def disassociateSystem(receiver: ActorRef, event: DisassociatedEvent): Unit ={
+    receiver ! DisassociatedEvent
+  }
+
+  def deleteActor(receiver: ActorRef, actorId: String): Future[Any] = {
+    receiver ? ActorTermination(actorId)
+  }
+
+  def sendRemoteCommand(receiver: ActorRef, clientUID: String, command: String, args: immutable.List[String]): Unit = {
+    receiver ! RemoteCommand(clientUID, command, args)
+  }
+
+  def sendMessageToActor(receiver: ActorRef, actorId: String, msg: String): Future[Any] = {
+    receiver ? SendMessageToActor(actorId, msg)
+  }
+
+  def updateOnRSConnection(receiver: ActorRef, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]): Unit = {
+    receiver ! UpdateActors(robotsUUIDMap)
+  }
+}
+
 class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef)
   extends Actor with ActorManagerMessages with TaskManagerMessages with DisassociateSystem with RouterManagerMessages{
   implicit val timeout: Timeout = 5 second
@@ -41,7 +94,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     case SendMessageToActor(id, msg)      => sendMessageToRemoteActor(id, msg)
     case rc: RemoteCommand                => sendCommandToRemoteActor(rc)
     case event: DisassociatedEvent        => idToActor = disassociateSystem(idToActor, event)
-    case req: RemoteConnectionRequest     => updateOnRSConnect(req)
+    case req: UpdateActors                => updateOnRSConnect(req)
   }
 
   /**
@@ -49,7 +102,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
    * после того как она поднялась. Добавляем всех акторов из Remote System
    * если их нет в списке.
    */
-  def updateOnRSConnect(req: RemoteConnectionRequest): Unit = {
+  def updateOnRSConnect(req: UpdateActors): Unit = {
     req.robotsUUIDMap.foreach{
       tuple =>
         if (!idToActor.contains(tuple._1))
@@ -97,6 +150,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
+        //TODO: это есессно не скомпилится, нужно написать примерно тож самое для всех акторов
         Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString,
             clientId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>

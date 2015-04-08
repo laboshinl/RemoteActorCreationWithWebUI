@@ -1,10 +1,13 @@
-import akka.actor.{ActorRef, Actor}
+package LocalAppActors
+
+import akka.actor.{Actor, ActorRef}
 import akka.event.Logging
+import akka.pattern.ask
 import akka.util.Timeout
+import core.messages._
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import akka.pattern.ask
-import core.messages._
 
 /**
  * Created by mentall on 15.03.15.

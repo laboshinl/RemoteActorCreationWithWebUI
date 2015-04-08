@@ -1,11 +1,13 @@
+package LocalAppActors
+
 import java.util.UUID
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Actor, ActorRef}
 import akka.event.Logging
 import akka.remote.DisassociatedEvent
-import scala.collection.mutable
-
 import core.messages._
+
+import scala.collection.mutable
 
 /**
  * Created by mentall on 12.02.15.

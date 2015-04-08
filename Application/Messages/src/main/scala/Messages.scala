@@ -43,16 +43,10 @@ trait ActorManagerMessages{
   case object CheckAddress extends Serializable
   @SerialVersionUID(23L)
   case object AddressIsOk extends Serializable
-  @SerialVersionUID(79L)
-  case class SendMessageToActor(actorId: String, msg: String) extends Serializable
-  @SerialVersionUID(82L)
-  case class ActorCreation(actorType : String) extends Serializable
-  @SerialVersionUID(83L)
-  case class ActorTermination(actorId: String) extends Serializable
+
   @SerialVersionUID(126L)
   case class ActorCreationSuccess(Status: String, clientUID : String, subString : String, sendString : String) extends Serializable
-  @SerialVersionUID(228L)
-  case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
+
   @SerialVersionUID(27L)
   case object TellYourIP extends Serializable
   @SerialVersionUID(28L)
@@ -81,8 +75,7 @@ trait RouterManagerMessages{
   case class SetMessage(Key: UUID) extends Serializable
   @SerialVersionUID(125L)
   case class DeleteClient(clientUUID : UUID) extends Serializable
-  @SerialVersionUID(229L)
-  case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+
 }
 
 trait RemoteSystemMessages{
