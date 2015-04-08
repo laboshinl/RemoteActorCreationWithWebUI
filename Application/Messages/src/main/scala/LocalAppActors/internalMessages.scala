@@ -7,7 +7,7 @@ import java.util.UUID
  * Created by baka on 06.04.15.
  */
 
-case object ActorManagerStarted
+
 case class PlanActorTermination(actorId: String)
 case class PlanActorCreation(actorType : String)
 case object PlanMachineStart

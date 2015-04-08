@@ -35,6 +35,12 @@ trait ActorManagerMessages {
   case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
   @SerialVersionUID(229L)
   case class UpdateActors(robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+  @SerialVersionUID(12L)
+  case class ActorCreated(adr: ActorRef) extends Serializable{
+    override def toString = "ActorRef:"+adr
+  }
+  @SerialVersionUID(21L)
+  case object NonexistentActorType extends Serializable
 }
 
 // вся соль того что написано, в том, чтобы актор вызывающий эти функции ничего не знал про сообщения,
@@ -68,6 +74,14 @@ object ActorManager extends ActorManagerMessages {
 
   def updateOnRSConnection(receiver: ActorRef, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]): Unit = {
     receiver ! UpdateActors(robotsUUIDMap)
+  }
+
+  def replyActorCreated(actorRef: ActorRef): Unit = {
+    actorRef ! ActorCreated
+  }
+
+  def replyActorCreationError(actorRef: ActorRef): Unit = {
+    actorRef ! NonexistentActorType
   }
 }
 

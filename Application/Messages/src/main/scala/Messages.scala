@@ -31,14 +31,9 @@ trait TaskManagerMessages{
 }
 
 trait ActorManagerMessages{
-  @SerialVersionUID(13L)
-  case class CreateNewActor(actorType: String, actorId : String, clientId: String, subString : String, sendString : String) extends Serializable
-  @SerialVersionUID(12L)
-  case class ActorCreated(adr: ActorRef) extends Serializable{
-    override def toString = "ActorRef:"+adr
-  }
-  @SerialVersionUID(21L)
-  case object NonexistentActorType extends Serializable
+
+
+
   @SerialVersionUID(22L)
   case object CheckAddress extends Serializable
   @SerialVersionUID(23L)
@@ -47,10 +42,8 @@ trait ActorManagerMessages{
   @SerialVersionUID(126L)
   case class ActorCreationSuccess(Status: String, clientUID : String, subString : String, sendString : String) extends Serializable
 
-  @SerialVersionUID(27L)
-  case object TellYourIP extends Serializable
-  @SerialVersionUID(28L)
-  case class MyIPIs (IP : String) extends Serializable
+
+
 }
 
 trait RouterManagerMessages{
@@ -83,10 +76,8 @@ trait RemoteSystemMessages{
   case object NoRemoteSystems extends Serializable
   @SerialVersionUID(2291L)
   case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
-  @SerialVersionUID(24L)
-  case object StopSystem extends Serializable
-  @SerialVersionUID(26L)
-  case object Connected extends Serializable
+
+
 }
 
 trait OpenstackManagerMessages{
@@ -96,16 +87,13 @@ trait OpenstackManagerMessages{
   case class MachineTermination(vmId : String) extends Serializable
 }
 
-trait HeartBleedMessages{
-  @SerialVersionUID(1113L)
-  case object Reconnect
-}
-
-trait GeneralMessages{
+trait GeneralMessages {
   @SerialVersionUID(2511L)
   case class Ping(actorUUID: UUID) extends Serializable
   @SerialVersionUID(2512L)
   case class Pong(actorUUID: UUID) extends Serializable
+  @SerialVersionUID(26L)
+  case object Connected extends Serializable
 }
 
 trait unused{

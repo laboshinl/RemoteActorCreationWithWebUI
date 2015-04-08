@@ -1,12 +1,12 @@
+package MessageRouterActors
+
 /**
  * Created by baka on 08.03.15.
  */
 
 import akka.actor._
-import akka.event.LoggingAdapter
-import akka.event.Logging
-import akka.zeromq._
-import akka.zeromq.ZMQMessage
+import akka.event.{Logging, LoggingAdapter}
+import akka.zeromq.{ZMQMessage, _}
 
 
 class ReceiverActor(val address : String, val port : String, val routingInfo : ActorRef) extends Actor {

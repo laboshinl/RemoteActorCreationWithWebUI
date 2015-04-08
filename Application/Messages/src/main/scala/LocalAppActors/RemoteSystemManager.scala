@@ -1,13 +1,17 @@
 package LocalAppActors
 
+import java.io.Serializable
 import java.util.UUID
 
-import akka.actor.{Actor, ActorRef}
+import RemoteSystemActors.RemoteActorCreator
+import akka.actor.{ActorSelection, Actor, ActorRef}
 import akka.event.Logging
 import akka.remote.DisassociatedEvent
 import core.messages._
+import akka.pattern.ask
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
+import scala.concurrent.Future
 
 /**
  * Created by mentall on 12.02.15.
@@ -16,7 +20,42 @@ import scala.collection.mutable
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
-class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSystemMessages with ActorManagerMessages with GeneralMessages{
+
+trait RemoteSystemManagerMessages {
+  @SerialVersionUID(2291L)
+  case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
+  @SerialVersionUID(28L)
+  case class MyIPIs (ip : String) extends Serializable
+  @SerialVersionUID(31L)
+  case object StopAllSystems
+  // Тут соль в чём, эти сообщения в разных трейтах, это разные объекты -> его тупо ресендить уже не получится
+  // логически это тот же CreateNewActor, но под капотом это совсем другой класс
+  @SerialVersionUID(32L)
+  case class CreateActorReq(actorType: String, actorId : String, clientId: String, subString : String, sendString : String) extends Serializable
+  @SerialVersionUID(33L)
+  case class ActorCreatedReply(actorRef: ActorRef) extends Serializable
+  case object ActorManagerStarted
+}
+
+object RemoteSystemManager extends RemoteSystemManagerMessages with GeneralMessages {
+  def connectToManager(actorSelection: ActorSelection, uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]): Unit = {
+    actorSelection ! RemoteConnectionRequest(uUID, robotsUUIDMap)
+  }
+
+  def pingManager(actorSelection: ActorSelection): Future[Any] = {
+    actorSelection ? Ping
+  }
+
+  def replyMyIp(actorSelection: ActorSelection, ip: String): Unit = {
+    actorSelection ! MyIPIs(ip)
+  }
+
+  def stopAllSystems(actorRef: ActorRef): Unit = {
+    actorRef ! StopAllSystems
+  }
+}
+
+class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSystemManagerMessages with GeneralMessages {
   var waiter : ActorRef = null
   var actorManager: ActorRef = null
   val logger = Logging.getLogger(context.system, self)
@@ -37,12 +76,12 @@ class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSyste
         remoteSystems += ((request.uUID, sender()))
         actorManager ! request
         sender() ! Connected
-        sender() ! TellYourIP
+        RemoteActorCreator.tellYourIp(sender())
       }
     }
   }
 
-  def createNewActor(msg: CreateNewActor): Unit = {
+  def createNewActor(msg: CreateActorReq): Unit = {
     logger.debug("Got request on creation")
     if(remoteSystems.isEmpty) {
       logger.debug("Empty remoteSystemsList")
@@ -53,11 +92,11 @@ class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSyste
   }
 
   override def receive: Receive = {
-    case msg: CreateNewActor              => createNewActor(msg)
-    case ActorCreated(adr)                => logger.debug("Checking address"); adr ! CheckAddress
+    case msg: CreateActorReq              => createNewActor(msg)
+    case ActorCreatedReply(adr)           => logger.debug("Checking address"); adr ! Ping
     case NonexistentActorType             => logger.debug("NonExsistent actor type"); waiter ! NonexistentActorType
-    case AddressIsOk                      => logger.debug("Address is ok"); waiter ! ActorCreated(sender())
-    case StopSystem                       => logger.info("Stopping remote system"); for (r <- remoteSystems.values) r ! StopSystem
+    case Pong                             => logger.debug("Address is ok"); waiter ! ActorCreated(sender())
+    case StopAllSystems                    => logger.info("Stopping remote system"); for (r <- remoteSystems.values) RemoteActorCreator.stopSystem(r)
     case req: RemoteConnectionRequest     => onRemoteSystemConnection(req)
     case event: DisassociatedEvent        => remoteSystems = disassociateSystem(remoteSystems, event)
     case MyIPIs(ip)                       => logger.debug(ip)

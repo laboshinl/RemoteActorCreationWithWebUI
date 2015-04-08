@@ -1,13 +1,15 @@
-import akka.actor.{PoisonPill, ActorRef, Actor}
+package RemoteSystemActors
+
+import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.event.Logging
 import akka.util.ByteString
 import akka.zeromq._
+import core.messages._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization
-import scala.collection.immutable
 
-import core.messages._
+import scala.collection.immutable
 /**
  * Created by mentall on 13.02.15.
  */
@@ -26,7 +28,7 @@ abstract class RobotActor(id: String, subString: String, sendString: String, mas
 }
 
 class ParrotActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master)
-with ActorManagerMessages{
+  with GeneralMessages {
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -48,7 +50,7 @@ with ActorManagerMessages{
       logger.debug("Received akka msg: " + msg)
       sender ! msg + msg + msg + "!"
     }
-    case CheckAddress => sender	! AddressIsOk
+    case Ping => sender()	! Pong
     case rc : RemoteCommand => println("got command: "+ rc.command)
   }
 }
@@ -65,6 +67,6 @@ with ActorManagerMessages{
 
   override def receive: Receive = {
     case rc : RemoteCommand => sendSocket ! comandToZMessage(rc)
-    case CheckAddress => sender	! AddressIsOk
+    case Ping => sender	! Pong
   }
 }
