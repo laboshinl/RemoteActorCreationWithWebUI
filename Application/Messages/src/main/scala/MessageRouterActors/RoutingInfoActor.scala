@@ -1,24 +1,62 @@
 package MessageRouterActors
 
+import java.io.Serializable
 import java.util.UUID
 
+import LocalAppActors.RouterManager
 import akka.actor._
 import akka.event.{Logging, LoggingAdapter}
-import akka.pattern.ask
 import akka.util.Timeout
 import akka.zeromq.{ZMQMessage, ZeroMQExtension}
 import com.typesafe.config.ConfigFactory
+import core.heartbleed.HeartBleedMessages
 import core.messages._
 
 import scala.collection.mutable
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
+import akka.pattern.ask
 
 /**
  * Created by baka on 18.03.15.
  */
 
-class RoutingInfoActor(val address : String, val port : String) extends Actor with RouterManagerMessages with GeneralMessages{
+trait RoutingInfoMessages {
+  @SerialVersionUID(126L)
+  case class DeleteClient(clientUUID : UUID) extends Serializable
+  @SerialVersionUID(123L)
+  case object GetSendString extends Serializable
+  @SerialVersionUID(14L)
+  case class AddPair(clientUUID : UUID, actorUUID : UUID)
+  @SerialVersionUID(15L)
+  case class GetMessage(Key: UUID) extends Serializable
+  @SerialVersionUID(16L)
+  case class SetMessage(Key: UUID) extends Serializable
+}
+
+object RoutingInfoActor extends RoutingInfoMessages {
+  def deleteClient(actorRef: ActorRef, clientUUID: UUID): Unit = {
+    actorRef ! DeleteClient(clientUUID)
+  }
+  
+  def addPair(actorRef: ActorRef, clientUUID : UUID, actorUUID : UUID): Unit = {
+    actorRef ! AddPair(clientUUID, actorUUID)
+  }
+
+  def getPublisherConnectionString(actorRef: ActorRef, clientUUD: UUID): Future[Any] = {
+    actorRef ? GetMessage(clientUUD)
+  }
+
+  def setNewUser(actorRef: ActorRef, clientUUID: UUID): Future[Any] = {
+    actorRef ? SetMessage(clientUUID)
+  }
+
+  def getConnectionString(actorRef: ActorRef): Future[Any] = {
+    actorRef ? GetSendString
+  }
+}
+
+class RoutingInfoActor(val address : String, val port : String) extends Actor with RoutingInfoMessages with GeneralMessages with HeartBleedMessages {
   implicit val timeout: Timeout = 10 seconds
   val myUUID = UUID.randomUUID()
   var uniquePort = port.toInt + 1
@@ -35,9 +73,8 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor wi
       logger.info("Trying to connect...")
       remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
         ConfigFactory.load().getString("my.own.master-name"))
-      val connection = remote ? Ping
-      Await.result(connection, timeout.duration)
-      remote ! RouterConnectionRequest(myUUID, routingPairs)
+      Await.result(RouterManager.pingManager(remote), timeout.duration)
+      RouterManager.connectToRouterManager(remote, myUUID, routingPairs)
       logger.info("Connected...!")
     } catch {
       case e: Exception => logger.info("Retrying...");
@@ -96,9 +133,9 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor wi
   }
 
   def associateUsers(msg : AddPair) : Unit = {
-    routingPairs += ((msg.clientId, msg.actorId))
-    routingPairs += ((msg.actorId, msg.clientId))
-    logger.debug("Paired: {}", (msg.actorId, msg.clientId))
+    routingPairs += ((msg.clientUUID, msg.actorUUID))
+    routingPairs += ((msg.actorUUID, msg.clientUUID))
+    logger.debug("Paired: {}", (msg.actorUUID, msg.clientUUID))
   }
 
   def replySendString() : Unit = {

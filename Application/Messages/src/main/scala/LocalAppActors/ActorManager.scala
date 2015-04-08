@@ -36,11 +36,15 @@ trait ActorManagerMessages {
   @SerialVersionUID(229L)
   case class UpdateActors(robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
   @SerialVersionUID(12L)
-  case class ActorCreated(adr: ActorRef) extends Serializable{
-    override def toString = "ActorRef:"+adr
+  case class ActorCreated(adr: ActorRef) extends Serializable {
+    override def toString = "ActorRef:" + adr
   }
   @SerialVersionUID(21L)
   case object NonexistentActorType extends Serializable
+  @SerialVersionUID(22L)
+  case object NoRouters
+  @SerialVersionUID(22L)
+  case class PairRegistered(clientSubStr: String, actorSubStr: String, sendString: String) extends Serializable
 }
 
 // вся соль того что написано, в том, чтобы актор вызывающий эти функции ничего не знал про сообщения,
@@ -83,10 +87,18 @@ object ActorManager extends ActorManagerMessages {
   def replyActorCreationError(actorRef: ActorRef): Unit = {
     actorRef ! NonexistentActorType
   }
+
+  def replyNoRoutersError(actorRef: ActorRef): Unit = {
+    actorRef ! NoRouters
+  }
+
+  def pairRegistred(actorRef: ActorRef, clientSubStr: String, actorSubStr: String, sendString: String): Unit = {
+    actorRef ! PairRegistered(clientSubStr, actorSubStr, sendString)
+  }
 }
 
 class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef)
-  extends Actor with ActorManagerMessages with TaskManagerMessages with DisassociateSystem with RouterManagerMessages{
+  extends Actor with ActorManagerMessages with TaskManagerMessages with DisassociateSystem with RouterManagerMessages {
   implicit val timeout: Timeout = 5 second
   var logger = Logging.getLogger(context.system, self)
   var idToActor = new mutable.HashMap[UUID, ActorRef]
@@ -99,7 +111,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     super.preStart()
-    remoteSystemManager ! ActorManagerStarted
+    RemoteSystemManager.sayActorManagerStarted(remoteSystemManager)
   }
 
   override def receive: Receive = {
@@ -161,11 +173,11 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     val actorId  = UUID.randomUUID
     val clientId = UUID.randomUUID
     logger.debug("Create Actor for client: " + clientId.toString)
-    Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
+    Await.result(RouterManager.registerPair(routerManager, clientId, actorId), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
         //TODO: это есессно не скомпилится, нужно написать примерно тож самое для всех акторов
-        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString,
+        Await.result(RemoteSystemManager.createActor(remoteSystemManager, actorType, actorId.toString,
             clientId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
@@ -182,3 +194,4 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     }
   }
 }
+

@@ -31,54 +31,11 @@ trait TaskManagerMessages{
 }
 
 trait ActorManagerMessages{
-
-
-
-  @SerialVersionUID(22L)
-  case object CheckAddress extends Serializable
-  @SerialVersionUID(23L)
-  case object AddressIsOk extends Serializable
-
   @SerialVersionUID(126L)
   case class ActorCreationSuccess(Status: String, clientUID : String, subString : String, sendString : String) extends Serializable
-
-
-
 }
 
-trait RouterManagerMessages{
 
-  @SerialVersionUID(1113L)
-  case object Reconnect
-  @SerialVersionUID(230L)
-  case class RouterConnectionRequest(uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
-  @SerialVersionUID(16L)
-  case class GetPairedSocket(Key: String) extends Serializable
-  @SerialVersionUID(89L)
-  case class GetPairedUser(Key: String) extends Serializable
-  @SerialVersionUID(90L)
-  case class ResendMsg(resendTo : UUID, msg : ZMQMessage) extends Serializable
-  @SerialVersionUID(123L)
-  case class GetSendString() extends Serializable
-  @SerialVersionUID(14L)
-  case class AddPair(clientId : UUID, actorId : UUID)
-  @SerialVersionUID(15L)
-  case class GetMessage(Key: UUID) extends Serializable
-  @SerialVersionUID(16L)
-  case class SetMessage(Key: UUID) extends Serializable
-  @SerialVersionUID(125L)
-  case class DeleteClient(clientUUID : UUID) extends Serializable
-
-}
-
-trait RemoteSystemMessages{
-  @SerialVersionUID(201L)
-  case object NoRemoteSystems extends Serializable
-  @SerialVersionUID(2291L)
-  case class RemoteConnectionRequest(uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]) extends Serializable
-
-
-}
 
 trait OpenstackManagerMessages{
   @SerialVersionUID(84L)

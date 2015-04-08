@@ -34,6 +34,8 @@ trait RemoteSystemManagerMessages {
   case class CreateActorReq(actorType: String, actorId : String, clientId: String, subString : String, sendString : String) extends Serializable
   @SerialVersionUID(33L)
   case class ActorCreatedReply(actorRef: ActorRef) extends Serializable
+  @SerialVersionUID(34L)
+  case object NonexistentActorType extends Serializable
   case object ActorManagerStarted
 }
 
@@ -52,6 +54,15 @@ object RemoteSystemManager extends RemoteSystemManagerMessages with GeneralMessa
 
   def stopAllSystems(actorRef: ActorRef): Unit = {
     actorRef ! StopAllSystems
+  }
+
+  def sayActorManagerStarted(actorRef: ActorRef): Unit = {
+    actorRef ! ActorManagerStarted
+  }
+
+  def createActor(actorRef: ActorRef, actorType: String, actorId : String, clientId: String,
+                  subString : String, sendString : String): Future[Any] = {
+    actorRef ? CreateActorReq(actorType, actorId, clientId, subString, sendString)
   }
 }
 
@@ -85,7 +96,7 @@ class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSyste
     logger.debug("Got request on creation")
     if(remoteSystems.isEmpty) {
       logger.debug("Empty remoteSystemsList")
-      sender() ! NoRemoteSystems
+      ActorManager.replyNoRoutersError(sender())
     }
     waiter = sender()
     remote ! msg
@@ -94,8 +105,8 @@ class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSyste
   override def receive: Receive = {
     case msg: CreateActorReq              => createNewActor(msg)
     case ActorCreatedReply(adr)           => logger.debug("Checking address"); adr ! Ping
-    case NonexistentActorType             => logger.debug("NonExsistent actor type"); waiter ! NonexistentActorType
-    case Pong                             => logger.debug("Address is ok"); waiter ! ActorCreated(sender())
+    case NonexistentActorType             => logger.debug("NonExsistent actor type"); ActorManager.replyActorCreationError(waiter)
+    case Pong                             => logger.debug("Address is ok"); ActorManager.replyActorCreated(sender())
     case StopAllSystems                    => logger.info("Stopping remote system"); for (r <- remoteSystems.values) RemoteActorCreator.stopSystem(r)
     case req: RemoteConnectionRequest     => onRemoteSystemConnection(req)
     case event: DisassociatedEvent        => remoteSystems = disassociateSystem(remoteSystems, event)

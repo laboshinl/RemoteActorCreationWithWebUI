@@ -1,8 +1,10 @@
 package LocalAppActors
 
+import java.io.Serializable
 import java.util.UUID
 
-import akka.actor.{Actor, ActorRef}
+import MessageRouterActors.RoutingInfoActor
+import akka.actor.{ActorSelection, Actor, ActorRef}
 import akka.event.{Logging, LoggingAdapter}
 import akka.pattern.ask
 import akka.remote.DisassociatedEvent
@@ -10,12 +12,42 @@ import akka.util.Timeout
 import core.messages._
 
 import scala.collection.mutable
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 /**
  * Created by baka on 11.03.15.
  */
+
+trait RouterManagerMessages {
+  @SerialVersionUID(230L)
+  case class RouterConnectionRequest(uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
+  @SerialVersionUID(125L)
+  case class DeleteClient(clientUUID : UUID) extends Serializable
+  @SerialVersionUID(126L)
+  case class RegisterPair(clientUUID : UUID, actorUUID : UUID) extends Serializable
+  @SerialVersionUID(126L)
+  case class UnregisterPair(clientUUID: UUID, actorUUID: UUID) extends Serializable
+}
+
+object RouterManager extends RouterManagerMessages with GeneralMessages {
+  def connectToRouterManager(actorSelection: ActorSelection, uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]): Unit = {
+    actorSelection ! RouterConnectionRequest(uUID, routingPairs)
+  }
+
+  def pingManager(actorSelection: ActorSelection): Future[Any] = {
+    actorSelection ? Ping
+  }
+
+  def deleteClient(actorRef: ActorRef, clientUUID: UUID): Unit = {
+    actorRef ! DeleteClient(clientUUID)
+  }
+
+  def registerPair(actorRef: ActorRef, clientUUID : UUID, actorUUID : UUID): Future[Any] = {
+    actorRef ? RegisterPair(clientUUID, actorUUID)
+  }
+}
+
 class RouterManager extends Actor with DisassociateSystem with RouterManagerMessages with GeneralMessages{
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
   var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, ActorRef)]
@@ -58,10 +90,13 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
    */
 
   def registerPairOnRemoteRouter(router: ActorRef, pair: RegisterPair): (String, String, String) = {
-    val clientStr     = Await.result((router ? SetMessage(pair.actorId)), timeout.duration).asInstanceOf[String]
-    val actorStr      = Await.result((router ? SetMessage(pair.clientId)), timeout.duration).asInstanceOf[String]
-    val connectString = Await.result((router ? GetSendString), timeout.duration).asInstanceOf[String]
-    router ! AddPair(pair.clientId, pair.actorId)
+    val clientStr     = Await.result(RoutingInfoActor.setNewUser(router, pair.actorUUID),
+      timeout.duration).asInstanceOf[String]
+    val actorStr      = Await.result(RoutingInfoActor.setNewUser(router, pair.clientUUID),
+      timeout.duration).asInstanceOf[String]
+    val connectString = Await.result(RoutingInfoActor.getConnectionString(router),
+      timeout.duration).asInstanceOf[String]
+    RoutingInfoActor.addPair(router, pair.clientUUID, pair.actorUUID)
     (clientStr, actorStr, connectString)
   }
 
@@ -102,7 +137,7 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
    */
 
   def registerPair(sender: ActorRef, pair: RegisterPair) = {
-    logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
+    logger.debug("Registering pair : {}, {}", pair.clientUUID, pair.actorUUID)
     if (usersAmountOnRouter.size > 0) {
       //get router with minimum users
       val (usersAmount, router) = usersAmountOnRouter.remove(0)
@@ -111,12 +146,12 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
       usersAmountOnRouter = updateUsersAmountOnRouter(usersAmount, router)
       //register new id's on router
       val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
-      clientOfRouter += ((pair.clientId, router))
-      clientOfRouter += ((pair.actorId, router))
+      clientOfRouter += ((pair.clientUUID, router))
+      clientOfRouter += ((pair.actorUUID, router))
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       logger.debug("Pair registered: (clientStr: {}, actorStr: {}, sendStr: {}) \n Routers load: {}",
                    clientStr, actorStr, connectString, usersAmountOnRouter)
-      sender ! PairRegistered(clientStr, actorStr, connectString)
+      ActorManager.pairRegistred(sender, clientStr, actorStr, connectString)
     } else {
       //если нет роутеров, то ничего не остаётся как послать клиента.
       logger.debug("No Routers connected")
@@ -125,14 +160,14 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
   }
 
   def unregisterPair(unregisterPair: UnregisterPair): Unit = {
-    deleteClient(DeleteClient(unregisterPair.actorId))
-    deleteClient(DeleteClient(unregisterPair.clientId))
+    deleteClient(DeleteClient(unregisterPair.actorUUID))
+    deleteClient(DeleteClient(unregisterPair.clientUUID))
   }
 
   def deleteClient(msg : DeleteClient) = {
     if (clientOfRouter.contains(msg.clientUUID)) {
       val router = clientOfRouter(msg.clientUUID)
-      router ! msg
+      RoutingInfoActor.deleteClient(router, msg.clientUUID)
       clientOfRouter -= msg.clientUUID
       for (i <- 0 to usersAmountOnRouter.size) {
         if(usersAmountOnRouter(i)._2 == router) {
@@ -144,9 +179,9 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
   }
 
   def updateOnDisassociateEvent(event: DisassociatedEvent): Unit = {
-    routerUUIDMap   = disassociateSystem(routerUUIDMap, event)
-    clientOfRouter  = disassociateSystem(clientOfRouter, event)
-    usersAmountOnRouter = disassociateUsers(usersAmountOnRouter, event)
+    routerUUIDMap         = disassociateSystem(routerUUIDMap, event)
+    clientOfRouter        = disassociateSystem(clientOfRouter, event)
+    usersAmountOnRouter   = disassociateUsers(usersAmountOnRouter, event)
   }
 
   override def receive : Receive = {

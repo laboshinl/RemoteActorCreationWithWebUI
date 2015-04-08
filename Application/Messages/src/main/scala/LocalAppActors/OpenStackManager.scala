@@ -64,6 +64,7 @@ class OpenStackManager extends Actor
   /**
    * unused method? for delete?
    * It's used in startMachine
+   * Ok, Im blind ^)^
    * @return
    */
   def buildVMConfiguration(vmId: String, image: String, namePrefix: String) = {
