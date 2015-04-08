@@ -23,12 +23,12 @@ class Controller(val actorManager     : ActorRef,
 
   override def receive: Receive = {
     case ("runVMsWithRemoteAppAndMessageRouter") => planAction(openStackManager ? ("startRemoteAppAndMessageRouter"))
-    case PlanActorCreation(actorType)     => planAction(actorManager     ? ActorCreation (actorType))
-    case PlanActorTermination(actorId)    => planAction(actorManager     ? ActorTermination(actorId))
-    case PlanMachineStart                 => planAction(openStackManager ? MachineStart)
-    case PlanMachineTermination(vmId)     => planAction(openStackManager ? MachineTermination(vmId))
-    case ActorIdAndMessageToJson(id, msg) => sender ! Await.result(actorManager ? SendMessageToActor(id, msg), timeout.duration)
-    case command: RemoteCommand           => actorManager ! command
+    case PlanActorCreation(actorType)                 => planAction(ActorManager.createActor(actorManager, actorType))
+    case PlanActorTermination(actorId)                => planAction(ActorManager.deleteActor(actorManager, actorId))
+    case PlanMachineStart                             => planAction(openStackManager ? MachineStart)
+    case PlanMachineTermination(vmId)                 => planAction(openStackManager ? MachineTermination(vmId))
+    case ActorIdAndMessageToJson(id, msg)             => sender ! Await.result(ActorManager.sendMessageToActor(actorManager, id, msg), timeout.duration)
+    case RemoteCommand(uUID, command, args)           => ActorManager.sendRemoteCommand(actorManager, uUID, command, args)
   }
 
   def planAction(task : Future[Any]) = {
