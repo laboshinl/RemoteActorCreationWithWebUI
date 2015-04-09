@@ -1,13 +1,25 @@
 package LocalAppActors
 
+import java.io.Serializable
+
 import akka.actor.{Actor, ActorRef}
 import akka.event.Logging
 import akka.pattern.ask
 import akka.util.Timeout
-import core.messages._
 
+import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+
+trait ControllerMessages{
+  @SerialVersionUID(1228L)
+  case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
+  case class PlanActorTermination(actorId: String)
+  case class PlanActorCreation(actorType : String)
+  case object PlanMachineStart
+  case class PlanMachineTermination(vmId : String)
+  case class ActorIdAndMessageToJson(var id: String, var msg: String) extends Serializable
+}
 
 /**
  * Created by mentall on 15.03.15.
@@ -15,7 +27,7 @@ import scala.concurrent.{Await, Future}
 class Controller(val actorManager     : ActorRef,
                  val openStackManager : ActorRef,
                  val taskManager      : ActorRef)
-  extends Actor with ActorManagerMessages with OpenstackManagerMessages with TaskManagerMessages
+  extends Actor with ControllerMessages
 {
 
   implicit val timeout: Timeout = 2 second
@@ -37,4 +49,30 @@ class Controller(val actorManager     : ActorRef,
     sender ! result
   }
 
+}
+
+object Controller extends ControllerMessages{
+  def planActorCreation(receiver: ActorRef, actorType: String) : Future[Any] = {
+    receiver ? PlanActorCreation(actorType)
+  }
+
+  def planActorTermination(receiver: ActorRef, actorId: String) : Future[Any] = {
+    receiver ? PlanActorTermination(actorId)
+  }
+
+  def planMachineStart(receiver: ActorRef) : Future[Any] = {
+    receiver ? PlanMachineStart
+  }
+
+  def planMachineTermination(receiver: ActorRef, vmId : String) : Future[Any] = {
+    receiver ? PlanMachineTermination(vmId)
+  }
+
+  def sendMessageToActor(receiver: ActorRef, id: String, msg: String) : Future[Any] = {
+    receiver ? ActorIdAndMessageToJson
+  }
+
+  def sendRemoteCommand(receiver: ActorRef, uUID : String, command: String, args: immutable.List[String]) : Future[Any] = {
+    receiver ? RemoteCommand(uUID, command, args)
+  }
 }
