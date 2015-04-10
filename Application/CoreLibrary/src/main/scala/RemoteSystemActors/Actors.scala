@@ -1,20 +1,35 @@
 package RemoteSystemActors
 
+import java.io.Serializable
+
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.event.Logging
-import akka.util.ByteString
+import akka.util.{Timeout, ByteString}
 import akka.zeromq._
 import core.messages._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization
-
+import scala.concurrent.duration._
 import scala.collection.immutable
 /**
  * Created by mentall on 13.02.15.
  */
 
-abstract class RobotActor(id: String, subString: String, sendString: String, master: ActorRef) extends Actor {
+trait RobotMessages {
+  @SerialVersionUID(1267L)
+  case class RemoteCommand(command: String, args: immutable.List[String]) extends Serializable
+}
+
+object RobotActor extends RobotMessages {
+  implicit val timeout: Timeout = 5 seconds
+  def sendCommand(actorRef: ActorRef, command: String, args: immutable.List[String]): Unit = {
+    actorRef ! RemoteCommand(command, args)
+  }
+}
+
+abstract class RobotActor(id: String, subString: String, sendString: String, master: ActorRef) extends Actor
+  with RobotMessages with GeneralMessages {
   val logger = Logging.getLogger(context.system, this)
   val subSocket = ZeroMQExtension(context.system).newSubSocket(Connect(subString), Listener(self), Subscribe(id))
   val sendSocket  = ZeroMQExtension(context.system).newDealerSocket(Array(Connect(sendString), Listener(self)))
@@ -23,11 +38,12 @@ abstract class RobotActor(id: String, subString: String, sendString: String, mas
   override def postStop(): Unit = {
     subSocket ! PoisonPill
     sendSocket ! PoisonPill
-    master ! DeleteMe
+    RemoteActorCreator.deleteMePlease(master)
   }
 }
 
-class ParrotActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master)
+class ParrotActor(id: String, subString: String, sendString: String, master: ActorRef)
+  extends RobotActor(id, subString, sendString, master)
   with GeneralMessages {
 
   @throws[Exception](classOf[Exception])
@@ -55,8 +71,8 @@ class ParrotActor(id: String, subString: String, sendString: String, master: Act
   }
 }
 
-class CommandProxyActor(id: String, subString: String, sendString: String, master: ActorRef) extends RobotActor(id, subString, sendString, master)
-with ActorManagerMessages{
+class CommandProxyActor(id: String, subString: String, sendString: String, master: ActorRef)
+  extends RobotActor(id, subString, sendString, master) {
   sealed trait Status
   implicit val formats = Serialization.formats(FullTypeHints(List(classOf[Status])))
 

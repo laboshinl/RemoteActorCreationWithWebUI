@@ -7,9 +7,10 @@ import RemoteSystemActors.RemoteActorCreator
 import akka.actor.{ActorSelection, Actor, ActorRef}
 import akka.event.Logging
 import akka.remote.DisassociatedEvent
+import akka.util.Timeout
 import core.messages._
 import akka.pattern.ask
-
+import scala.concurrent.duration._
 import scala.collection.{immutable, mutable}
 import scala.concurrent.Future
 
@@ -20,6 +21,10 @@ import scala.concurrent.Future
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
+
+trait RSMTimeout {
+  implicit val timeout: Timeout = 5 seconds
+}
 
 trait RemoteSystemManagerMessages {
   @SerialVersionUID(2291L)
@@ -39,7 +44,8 @@ trait RemoteSystemManagerMessages {
   case object ActorManagerStarted
 }
 
-object RemoteSystemManager extends RemoteSystemManagerMessages with GeneralMessages {
+object RemoteSystemManager extends RemoteSystemManagerMessages with GeneralMessages with RSMTimeout {
+
   def connectToManager(actorSelection: ActorSelection, uUID: UUID, robotsUUIDMap: immutable.HashMap[UUID, ActorRef]): Unit = {
     actorSelection ! RemoteConnectionRequest(uUID, robotsUUIDMap)
   }
@@ -66,7 +72,8 @@ object RemoteSystemManager extends RemoteSystemManagerMessages with GeneralMessa
   }
 }
 
-class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSystemManagerMessages with GeneralMessages {
+class RemoteSystemManager extends Actor with RSMTimeout with DisassociateSystem with RemoteSystemManagerMessages
+  with GeneralMessages {
   var waiter : ActorRef = null
   var actorManager: ActorRef = null
   val logger = Logging.getLogger(context.system, self)
@@ -107,7 +114,7 @@ class RemoteSystemManager extends Actor with DisassociateSystem with RemoteSyste
     case ActorCreatedReply(adr)           => logger.debug("Checking address"); adr ! Ping
     case NonexistentActorType             => logger.debug("NonExsistent actor type"); ActorManager.replyActorCreationError(waiter)
     case Pong                             => logger.debug("Address is ok"); ActorManager.replyActorCreated(sender())
-    case StopAllSystems                    => logger.info("Stopping remote system"); for (r <- remoteSystems.values) RemoteActorCreator.stopSystem(r)
+    case StopAllSystems                   => logger.info("Stopping remote system"); for (r <- remoteSystems.values) RemoteActorCreator.stopSystem(r)
     case req: RemoteConnectionRequest     => onRemoteSystemConnection(req)
     case event: DisassociatedEvent        => remoteSystems = disassociateSystem(remoteSystems, event)
     case MyIPIs(ip)                       => logger.debug(ip)

@@ -2,18 +2,24 @@ package LocalAppActors
 
 import java.io.Serializable
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import akka.event.Logging
+import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import core.messages._
 import org.openstack4j.api.{Builders, OSClient}
 import org.openstack4j.model.compute.Server
 import org.openstack4j.openstack.OSFactory
+import scala.concurrent.duration._
+import scala.concurrent.Future
+import akka.pattern.ask
 
 /**
  * Created by mentall on 18.02.15.
  */
 
+trait OSTimeout {
+  implicit val timeout: Timeout = 60 seconds
+}
 
 trait OpenStackManagerMessages {
   @SerialVersionUID(84L)
@@ -22,8 +28,18 @@ trait OpenStackManagerMessages {
   case class MachineTermination(vmId : String) extends Serializable
 }
 
-class OpenStackManager extends Actor
-  with OpenstackManagerMessages with TaskManagerMessages{
+object OpenStackManager extends OpenStackManagerMessages with OSTimeout {
+
+  def startMachine(actorRef: ActorRef): Future[Any] = {
+    actorRef ? MachineStart
+  }
+
+  def terminateMachine(actorRef: ActorRef, vmId: String): Future[Any] = {
+    actorRef ? MachineTermination(vmId)
+  }
+}
+
+class OpenStackManager extends Actor with OSTimeout with OpenStackManagerMessages {
   val config = ConfigFactory.load()
   val logger = Logging.getLogger(context.system, self)
   val os : OSClient = OSFactory.builder()
@@ -54,7 +70,7 @@ class OpenStackManager extends Actor
       os.compute().servers().delete(Servers(vmId.vmId).getId)
       Servers -= vmId.vmId
       logger.info("Open Stack Machine terminated...")
-      sender ! TaskCompletedWithId(vmId.vmId)
+      WebUIActor.tellTaskCompletedWithId(sender(), vmId.vmId)
     }
   }
 
@@ -70,7 +86,8 @@ class OpenStackManager extends Actor
         startMachine("my.own.openstack-router-image","router-")
         )
     }
-    case MachineStart => sender ! TaskCompletedWithId(startMachine("my.own.openstack-remoteapp-image","remoteapp-"))
+    case MachineStart => WebUIActor.tellTaskCompletedWithId(sender(),
+      startMachine("my.own.openstack-remoteapp-image","remoteapp-"))
     case vmId: MachineTermination => terminateMachine(vmId)
     case msg : String => logger.debug("Received msg: " + msg)
   }

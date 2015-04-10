@@ -1,10 +1,9 @@
 package RemoteSystemActors
 
 import java.io.Serializable
-import java.net.NetworkInterface
 import java.util.UUID
 
-import LocalAppActors.{RemoteSystemManager, ActorManager}
+import LocalAppActors.{ActorManager, RemoteSystemManager}
 import akka.actor.{Actor, ActorRef, ActorSelection, Props}
 import akka.event.Logging
 import akka.pattern.ask
@@ -16,10 +15,14 @@ import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.Future
-
+import NetHelper.IPResolver._
 /**
  * Created by baka on 08.04.15.
  */
+
+trait RACTimeout {
+  implicit val timeout: Timeout = 5 seconds
+}
 
 trait RemoteActorMessages {
   @SerialVersionUID(13L)
@@ -28,11 +31,11 @@ trait RemoteActorMessages {
   case object StopSystem extends Serializable
   @SerialVersionUID(27L)
   case object TellYourIP extends Serializable
-
   case object DeleteMe
 }
 
-object RemoteActorCreator extends RemoteActorMessages {
+object RemoteActorCreator extends RemoteActorMessages with RACTimeout {
+
   def createNewActor(actorRef: ActorRef, actorType: String, actorId : String, clientId: String, subString : String, sendString : String): Future[Any] = {
     actorRef ? CreateNewActor(actorType, actorId, clientId, subString, sendString)
   }
@@ -50,10 +53,10 @@ object RemoteActorCreator extends RemoteActorMessages {
   }
 }
 
-class RemoteActorCreator extends Actor with RemoteActorMessages with HeartBleedMessages {
+class RemoteActorCreator extends Actor with RemoteActorMessages with RACTimeout
+  with HeartBleedMessages {
   val myUUID = UUID.randomUUID()
-  implicit val timeout: Timeout = 10 seconds
-  val address = NetworkInterface.getNetworkInterfaces.next().getInetAddresses.toList.get(1).getHostAddress
+  val address = getMyIp()
   val logger = Logging.getLogger(context.system, this)
   var robotsUUIDMap = new immutable.HashMap[UUID, ActorRef]
   import context.dispatcher

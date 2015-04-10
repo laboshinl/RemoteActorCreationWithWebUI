@@ -3,6 +3,7 @@ package LocalAppActors
 import java.io.Serializable
 
 import akka.actor.{ActorRef, Actor}
+import akka.util.Timeout
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -12,7 +13,9 @@ import akka.pattern.ask
 /**
  * Created by mentall on 15.03.15.
  */
-
+trait TMTimeout {
+  implicit val timeout: Timeout = 5 seconds
+}
 
 trait TaskManagerMessages {
   @SerialVersionUID(73L)
@@ -21,17 +24,18 @@ trait TaskManagerMessages {
   case class TaskStatus(taskId : String) extends Serializable
 }
 
-object TaskManager extends TaskManagerMessages {
+object TaskManager extends TaskManagerMessages with TMTimeout {
+
   def manageTask(actorRef: ActorRef, future: Future[Any]): Future[Any] = {
     actorRef ? future
   }
 
-  def replyTaskStatus(actorRef: ActorRef, future: Future[Any]) = {
+  def replyTaskStatus(actorRef: ActorRef, id: String) = {
     actorRef ? TaskStatus
   }
 }
 
-class TaskManager extends Actor with TaskManagerMessages{
+class TaskManager extends Actor with TMTimeout with TaskManagerMessages {
   var idToTasksMap = new scala.collection.mutable.HashMap[String, Future[Any]]
 
   def manageTask(task: ManageTask): Unit = {
@@ -44,10 +48,10 @@ class TaskManager extends Actor with TaskManagerMessages{
     if (idToTasksMap.contains(taskStatus.taskId))
       if (idToTasksMap(taskStatus.taskId).isCompleted)
         Await.result(idToTasksMap(taskStatus.taskId), 1 minute) match {
-          case msg => sender ! msg
+          case msg => sender() ! msg
         }
-      else sender ! TaskIncomplete
-    else sender ! NoSuchId
+      else WebUIActor.tellTaskIncomplete(sender())
+    else WebUIActor.tellNoSuchId(sender())
   }
 
   override def receive: Receive = {

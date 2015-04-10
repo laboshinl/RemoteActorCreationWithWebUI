@@ -21,6 +21,10 @@ import akka.pattern.ask
  * Created by baka on 18.03.15.
  */
 
+trait RITimeout {
+  implicit val timeout: Timeout = 5 seconds
+}
+
 trait RoutingInfoMessages {
   @SerialVersionUID(126L)
   case class DeleteClient(clientUUID : UUID) extends Serializable
@@ -34,7 +38,7 @@ trait RoutingInfoMessages {
   case class SetMessage(Key: UUID) extends Serializable
 }
 
-object RoutingInfoActor extends RoutingInfoMessages {
+object RoutingInfoActor extends RoutingInfoMessages with RITimeout {
   def deleteClient(actorRef: ActorRef, clientUUID: UUID): Unit = {
     actorRef ! DeleteClient(clientUUID)
   }
@@ -56,8 +60,8 @@ object RoutingInfoActor extends RoutingInfoMessages {
   }
 }
 
-class RoutingInfoActor(val address : String, val port : String) extends Actor with RoutingInfoMessages with GeneralMessages with HeartBleedMessages {
-  implicit val timeout: Timeout = 10 seconds
+class RoutingInfoActor(val address : String, val port : String) extends Actor
+  with RoutingInfoMessages with GeneralMessages with HeartBleedMessages with RITimeout{
   val myUUID = UUID.randomUUID()
   var uniquePort = port.toInt + 1
   val zmqSystem = ZeroMQExtension(context.system)

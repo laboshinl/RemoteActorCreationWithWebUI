@@ -4,24 +4,78 @@ package LocalAppActors
  * Created by mentall on 08.02.15.
  */
 
+import java.io.Serializable
+
+
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
-import core.messages._
 import org.json4s.DefaultFormats
-
+import spray.http.{HttpEntity, HttpResponse}
+import spray.httpx.Json4sSupport
+import spray.httpx.marshalling.ToResponseMarshallable
+import spray.routing.HttpService
+import spray.http.MediaTypes._
+import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.language.postfixOps
 
 /**
  * это говно не поддаётся рефакторингу и моему осознанию. Я не знаю что с этим делать.
- * @param controller
- * @param taskManager
  */
+
+trait WebUiMessages {
+  @SerialVersionUID(122L)
+  case class ActorIdAndMessageToJson(id: String, msg: String) extends Serializable
+  case object NoSuchId extends Serializable
+  case object TaskIncomplete extends Serializable
+  case object TaskCompleted extends Serializable
+  case class TaskCompletedWithId(id: String) extends Serializable
+  case object TaskFailed extends Serializable
+  case class ActorCreationSuccess(Status: String, clientId: String, clientSubStr: String, sendString: String) extends Serializable
+  case class TaskResponse(Status: String, msg: String) extends Serializable
+  case class ActorTypeToJson(actorType: String) extends Serializable
+  case class IdToJson(Id: String) extends Serializable
+  @SerialVersionUID(1228L)
+  case class RemoteCommand(clientUID: String, command: String, args: immutable.List[String]) extends Serializable
+}
+
+object WebUIActor extends WebUiMessages {
+  implicit val timeout: Timeout = 2 second
+  def tellNoSuchId(actorRef: ActorRef): Unit = {
+    actorRef ! NoSuchId
+  }
+
+  def tellTaskIncomplete(actorRef: ActorRef): Unit = {
+    actorRef ! TaskIncomplete
+  }
+
+  def tellTaskCompleted(actorRef: ActorRef): Unit = {
+    actorRef ! TaskCompleted
+  }
+
+  def tellTaskCompletedWithId(actorRef: ActorRef, id: String): Unit = {
+    actorRef ! TaskCompletedWithId(id)
+  }
+
+  def tellTaskFailed(actorRef: ActorRef): Unit = {
+    actorRef ! TaskFailed
+  }
+
+  def tellTaskResponce(actorRef: ActorRef, status: String, msg: String): Unit = {
+    actorRef ! TaskResponse(status, msg)
+  }
+
+  def tellActorCreated(actorRef: ActorRef, status: String,
+                       clientId: String, clientSubStr: String, sendString: String): Unit = {
+    actorRef ! ActorCreationSuccess(status, clientId, clientSubStr, sendString)
+  }
+}
 
 class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   extends HttpService with Json4sSupport with Actor with TaskManagerMessages with ActorManagerMessages
+  with WebUiMessages
 {
   //Statements required by traits
   implicit def executionContext : ExecutionContextExecutor = actorRefFactory.dispatcher
@@ -80,21 +134,23 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   }
 
   def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
-    Await.result(controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
+    Await.result(Controller.planActorCreation(controller, actorType.actorType),
+      timeout.duration)match {
       case id : String  => Map("Status" -> "Success", "TaskId" -> id)
       case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def planActorDeletion(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(controller ? PlanActorTermination(ar.Id), timeout.duration)match {
+    Await.result(Controller.planActorTermination(controller, ar.Id),
+      timeout.duration)match {
       case id : String  => Map("Status" -> "Success", "TaskId" -> id)
       case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def sendMessageToActorOnRemoteMachine(ar: ActorIdAndMessageToJson): ToResponseMarshallable = {
-    Await.result(controller ? ar, timeout.duration) match {
+    Await.result(Controller.sendMessageToActor(controller, ar.id, ar.msg), timeout.duration) match {
       case msg : String  => HttpResponse(entity = HttpEntity(`text/html`, msg))
       case NoSuchId      => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
       case _             => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
@@ -102,7 +158,8 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   }
 
   def planMachineDeletion(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(controller ? PlanMachineTermination(ar.Id), timeout.duration) match {
+    Await.result(Controller.planMachineTermination(controller, ar.Id),
+      timeout.duration) match {
       case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
       case NoSuchId     => HttpResponse(entity = HttpEntity(`text/html`, "There is no vm with such id"))
       case _            => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
@@ -110,7 +167,7 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   }
 
   def planMachineCreation: ToResponseMarshallable = {
-    Await.result(controller ? PlanMachineStart, timeout.duration)match {
+    Await.result(Controller.planMachineStart(controller), timeout.duration)match {
       case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Machine creation is planned: " + id))
       case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
@@ -120,7 +177,7 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
     println(rc.clientUID)
     println(rc.command)
-    controller ! rc
+    Controller.sendRemoteCommand(controller, rc.clientUID, rc.command, rc.args)
     HttpResponse(entity = HttpEntity(`text/html`, "ok"))
   }
 

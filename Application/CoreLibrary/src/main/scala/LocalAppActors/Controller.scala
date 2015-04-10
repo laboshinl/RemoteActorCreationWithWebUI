@@ -18,6 +18,7 @@ trait ControllerMessages{
   case class PlanActorCreation(actorType : String)
   case object PlanMachineStart
   case class PlanMachineTermination(vmId : String)
+  @SerialVersionUID(122L)
   case class ActorIdAndMessageToJson(var id: String, var msg: String) extends Serializable
 }
 
@@ -25,7 +26,12 @@ trait ControllerMessages{
  * Created by mentall on 15.03.15.
  */
 
-object Controller extends ControllerMessages{
+trait CTimeout {
+  implicit val timeout: Timeout = 5 seconds
+}
+
+object Controller extends ControllerMessages with CTimeout {
+
   def planActorCreation(receiver: ActorRef, actorType: String) : Future[Any] = {
     receiver ? PlanActorCreation(actorType)
   }
@@ -54,10 +60,8 @@ object Controller extends ControllerMessages{
 class Controller(val actorManager     : ActorRef,
                  val openStackManager : ActorRef,
                  val taskManager      : ActorRef)
-  extends Actor with ControllerMessages
+  extends Actor with CTimeout with ControllerMessages
 {
-
-  implicit val timeout: Timeout = 2 second
   val logger = Logging.getLogger(context.system, this)
 
   override def receive: Receive = {
@@ -66,8 +70,8 @@ class Controller(val actorManager     : ActorRef,
     case ("runVMsWithRemoteAppAndMessageRouter")      => planAction(openStackManager ? ("startRemoteAppAndMessageRouter"))
     case PlanActorCreation(actorType)                 => planAction(ActorManager.createActor(actorManager, actorType))
     case PlanActorTermination(actorId)                => planAction(ActorManager.deleteActor(actorManager, actorId))
-    case PlanMachineStart                             => planAction(openStackManager ? MachineStart)
-    case PlanMachineTermination(vmId)                 => planAction(openStackManager ? MachineTermination(vmId))
+    case PlanMachineStart                             => planAction(OpenStackManager.startMachine(openStackManager))
+    case PlanMachineTermination(vmId)                 => planAction(OpenStackManager.terminateMachine(openStackManager, vmId))
     case ActorIdAndMessageToJson(id, msg)             => sender ! Await.result(ActorManager.sendMessageToActor(actorManager, id, msg), timeout.duration)
     case RemoteCommand(uUID, command, args)           => ActorManager.sendRemoteCommand(actorManager, uUID, command, args)
   }
@@ -76,7 +80,7 @@ class Controller(val actorManager     : ActorRef,
     val result = Await.result(TaskManager.manageTask(actorManager, task),
       timeout.duration)
     if (!result.isInstanceOf[String]) logger.error("result of ManageTask is not an id : String")
-    sender ! result
+    sender() ! result
   }
 
 }

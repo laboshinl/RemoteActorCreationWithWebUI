@@ -1,4 +1,3 @@
-import java.net.NetworkInterface
 import MessageRouterActors.{RoutingInfoActor, ReceiverActor}
 import akka.actor.{ActorRef, Actor, Props, ActorSystem}
 import akka.event.{LoggingAdapter, Logging}
@@ -8,7 +7,7 @@ import akka.pattern.ask
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import core.heartbleed.HeartBleed
-
+import NetHelper.IPResolver._
 /**
  * Created by baka on 11.03.15.
  */
@@ -16,9 +15,7 @@ object Router extends App {
   val system = ActorSystem("RouterSystem")
   implicit val timeout: Timeout = 2 second
   val logger : LoggingAdapter = Logging.getLogger(system, this)
-  var addresses = NetworkInterface.getNetworkInterfaces.nextElement().getInetAddresses
-  addresses.nextElement()
-  val address = addresses.nextElement().getHostAddress
+  val address = getMyIp()
   logger.debug("My IP: " + address)
   val port = ConfigFactory.load().getString("my.own.port")
   val poolSize = ConfigFactory.load().getInt("my.own.pool-size")

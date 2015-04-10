@@ -19,6 +19,10 @@ import scala.concurrent.duration._
  * Created by baka on 11.03.15.
  */
 
+trait RMTimeout {
+  implicit val timeout: Timeout = 5 seconds
+}
+
 trait RouterManagerMessages {
   @SerialVersionUID(230L)
   case class RouterConnectionRequest(uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]) extends Serializable
@@ -30,7 +34,8 @@ trait RouterManagerMessages {
   case class UnregisterPair(clientUUID: UUID, actorUUID: UUID) extends Serializable
 }
 
-object RouterManager extends RouterManagerMessages with GeneralMessages {
+object RouterManager extends RouterManagerMessages with GeneralMessages with RMTimeout {
+
   def connectToRouterManager(actorSelection: ActorSelection, uUID: UUID, routingPairs: mutable.HashMap[UUID, UUID]): Unit = {
     actorSelection ! RouterConnectionRequest(uUID, routingPairs)
   }
@@ -48,7 +53,8 @@ object RouterManager extends RouterManagerMessages with GeneralMessages {
   }
 }
 
-class RouterManager extends Actor with DisassociateSystem with RouterManagerMessages with GeneralMessages{
+class RouterManager extends Actor with RMTimeout with DisassociateSystem
+  with RouterManagerMessages with GeneralMessages {
   val logger : LoggingAdapter = Logging.getLogger(context.system, this)
   var usersAmountOnRouter = new mutable.ArrayBuffer[(Long, ActorRef)]
   var routerUUIDMap       = new mutable.HashMap[UUID, ActorRef]
@@ -58,8 +64,6 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
   override def preStart(): Unit = logger.debug("Path : {}", context.self.path)
   
   def getRouterCount : Int = usersAmountOnRouter.size
-
-  implicit val timeout: Timeout = 5 seconds
 
   /**
    * роутер подключается как ремот система в данной функции
@@ -71,14 +75,14 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
    * Всё что выше - частный случай для первого включения.
    */
 
-  def connectRouter(sender: ActorRef, request: RouterConnectionRequest) = {
+  def connectRouter(request: RouterConnectionRequest) = {
     if (!routerUUIDMap.contains(request.uUID)) {
       logger.info("Connection request")
-      routerUUIDMap += ((request.uUID, sender))
-      usersAmountOnRouter += ((request.routingPairs.size, sender))
+      routerUUIDMap += ((request.uUID, sender()))
+      usersAmountOnRouter += ((request.routingPairs.size, sender()))
       usersAmountOnRouter = usersAmountOnRouter.sorted
       request.routingPairs.keys.foreach {
-        uUID => clientOfRouter += ((uUID, sender))
+        uUID => clientOfRouter += ((uUID, sender()))
       }
       logger.debug("Sorted List : " + usersAmountOnRouter.toString)
     }
@@ -136,7 +140,7 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
    * как-то так. Хреновасенько конечно, но лучше чем ничего.
    */
 
-  def registerPair(sender: ActorRef, pair: RegisterPair) = {
+  def registerPair(pair: RegisterPair) = {
     logger.debug("Registering pair : {}, {}", pair.clientUUID, pair.actorUUID)
     if (usersAmountOnRouter.size > 0) {
       //get router with minimum users
@@ -151,23 +155,23 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       logger.debug("Pair registered: (clientStr: {}, actorStr: {}, sendStr: {}) \n Routers load: {}",
                    clientStr, actorStr, connectString, usersAmountOnRouter)
-      ActorManager.pairRegistred(sender, clientStr, actorStr, connectString)
+      ActorManager.pairRegistred(sender(), clientStr, actorStr, connectString)
     } else {
       //если нет роутеров, то ничего не остаётся как послать клиента.
       logger.debug("No Routers connected")
-      sender ! NoRouters
+      ActorManager.replyNoRoutersError(sender())
     }
   }
 
   def unregisterPair(unregisterPair: UnregisterPair): Unit = {
-    deleteClient(DeleteClient(unregisterPair.actorUUID))
-    deleteClient(DeleteClient(unregisterPair.clientUUID))
+    deleteClientLocal(DeleteClient(unregisterPair.actorUUID))
+    deleteClientLocal(DeleteClient(unregisterPair.clientUUID))
   }
 
-  def deleteClient(msg : DeleteClient) = {
+  def deleteClientLocal(msg : DeleteClient) = {
     if (clientOfRouter.contains(msg.clientUUID)) {
       val router = clientOfRouter(msg.clientUUID)
-      RoutingInfoActor.deleteClient(router, msg.clientUUID)
+      RouterManager.deleteClient(router, msg.clientUUID)
       clientOfRouter -= msg.clientUUID
       for (i <- 0 to usersAmountOnRouter.size) {
         if(usersAmountOnRouter(i)._2 == router) {
@@ -185,10 +189,10 @@ class RouterManager extends Actor with DisassociateSystem with RouterManagerMess
   }
 
   override def receive : Receive = {
-    case req: RouterConnectionRequest => connectRouter(sender(), req)
-    case pair: RegisterPair           => registerPair(sender(), pair)
+    case req: RouterConnectionRequest => connectRouter(req)
+    case pair: RegisterPair           => registerPair(pair)
     case pair: UnregisterPair         => unregisterPair(pair)
-    case msg : DeleteClient           => deleteClient(msg)
+    case msg : DeleteClient           => deleteClientLocal(msg)
     case event: DisassociatedEvent    => updateOnDisassociateEvent(event)
     case Ping                         => sender() ! Pong
     case msg                          => logger.debug("Unknown Message: {}", msg)

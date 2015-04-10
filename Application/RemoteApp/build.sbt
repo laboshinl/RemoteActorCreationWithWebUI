@@ -2,7 +2,7 @@ name := "RemoteApp"
 
 version := "1.0"
 
-scalaVersion := "2.10.0"
+scalaVersion := "2.10.5"
 
 libraryDependencies ++= {
   val testVersion = "1.9.2"
