@@ -24,8 +24,7 @@ trait TaskManagerMessages{
   case object NoSuchId extends Serializable
   @SerialVersionUID(72L)
   case class ManageTask(task : Future[Any]) extends Serializable
-  @SerialVersionUID(73L)
-  case class TaskStatus(taskId : String) extends Serializable
+
   @SerialVersionUID(202L)
   case class TaskResponse(Status: String, Result: String) extends Serializable
 }
@@ -38,10 +37,7 @@ trait ActorManagerMessages{
 
 
 trait OpenstackManagerMessages{
-  @SerialVersionUID(84L)
-  case object MachineStart extends Serializable
-  @SerialVersionUID(85L)
-  case class MachineTermination(vmId : String) extends Serializable
+
 }
 
 trait GeneralMessages {

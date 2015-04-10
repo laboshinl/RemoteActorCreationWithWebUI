@@ -1,13 +1,26 @@
 package LocalAppActors
 
+import java.io.Serializable
+
 import akka.actor.Actor
 import akka.event.Logging
 import com.typesafe.config.ConfigFactory
 import core.messages._
+import org.openstack4j.api.{Builders, OSClient}
+import org.openstack4j.model.compute.Server
+import org.openstack4j.openstack.OSFactory
 
 /**
  * Created by mentall on 18.02.15.
  */
+
+
+trait OpenStackManagerMessages {
+  @SerialVersionUID(84L)
+  case object MachineStart extends Serializable
+  @SerialVersionUID(85L)
+  case class MachineTermination(vmId : String) extends Serializable
+}
 
 class OpenStackManager extends Actor
   with OpenstackManagerMessages with TaskManagerMessages{
@@ -49,6 +62,7 @@ class OpenStackManager extends Actor
   TODO: Переделать возвращаемое значение в кортеж или мап
    */
   override def receive = {
+    // я не буду обращать на это внмания, ок?
     case ("startRemoteAppAndMessageRouter") => {
       println("\n\nstartRemoteAppAndMessageRouter\n\n")
       sender ! (

@@ -1,14 +1,36 @@
 package LocalAppActors
 
-import akka.actor.Actor
-import core.messages._
+import java.io.Serializable
+
+import akka.actor.{ActorRef, Actor}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
+import akka.pattern.ask
+
 /**
  * Created by mentall on 15.03.15.
  */
+
+
+trait TaskManagerMessages {
+  @SerialVersionUID(73L)
+  case class ManageTask(task : Future[Any]) extends Serializable
+  @SerialVersionUID(74L)
+  case class TaskStatus(taskId : String) extends Serializable
+}
+
+object TaskManager extends TaskManagerMessages {
+  def manageTask(actorRef: ActorRef, future: Future[Any]): Future[Any] = {
+    actorRef ? future
+  }
+
+  def replyTaskStatus(actorRef: ActorRef, future: Future[Any]) = {
+    actorRef ? TaskStatus
+  }
+}
+
 class TaskManager extends Actor with TaskManagerMessages{
   var idToTasksMap = new scala.collection.mutable.HashMap[String, Future[Any]]
 
