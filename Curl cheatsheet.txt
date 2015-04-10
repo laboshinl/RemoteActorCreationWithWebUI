@@ -25,7 +25,7 @@ curl -X DELETE -H "Content-Type: application/json" -d '{"id":"1"}' localhost:808
 sleep 5;
 curl -X POST -H "Content-Type: application/json" -d '{"id":"1"}' localhost:8080/system;
 
-curl -X GET localhost:8080/deploy-system
+
 
 curl -X PUT -H "Content-Type: application/json" -d '{"actorType":"ParrotActor"}' localhost:8080/actor
 curl -X GET -H "Content-Type: application/json" -d '{"Id":"1"}' localhost:8080/task

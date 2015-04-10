@@ -18,7 +18,7 @@ import core.messages._
  * Created by baka on 18.03.15.
  */
 
-class RoutingInfoActor(val address : String, val port : String) extends Actor with RouterManagerMessages with GeneralMessages{
+class RoutingInfoActor(val address : String, val port : String) extends Actor {
   implicit val timeout: Timeout = 10 seconds
   val myUUID = UUID.randomUUID()
   var uniquePort = port.toInt + 1
