@@ -77,7 +77,7 @@ class ClientAPI(object):
         else:
             raise Exception("""Can't register task""")
         resp = self.wait_for_task(task_id)
-        print 'Response: ', resp.json()["Result"] == self.client_id
+        print 'Response: ', resp.json()["UUID"] == self.client_id
 
 def main():
     client_api = ClientAPI('http://127.0.0.1:8080', 'ParrotActor')

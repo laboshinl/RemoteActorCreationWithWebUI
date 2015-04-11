@@ -14,8 +14,9 @@ import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
-import core.messages._;
+import core.messages._
 import core.heartbleed.HeartBleed
+import core.messages.RemoteActor._
 
 object Main extends App {
   val system = ActorSystem("HelloRemoteSystem")
@@ -70,9 +71,9 @@ class RemoteActorCreator extends Actor {
       logger.info("Trying to connect...")
       remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
         ConfigFactory.load().getString("my.own.master-name"))
-      val connection = remote ? Ping
+      val connection = remote ? General.Ping
       Await.result(connection, timeout.duration)
-      remote ! RemoteConnectionRequest(myUUID, robotsUUIDMap)
+      remote ! RemoteSystemManager.RemoteConnectionRequest(myUUID, robotsUUIDMap)
       logger.info("Connected...!")
     } catch {
       case e: Exception => logger.info("Retrying...");
@@ -91,7 +92,7 @@ class RemoteActorCreator extends Actor {
 
   def createActor(createReq: CreateNewActor, props: Props): immutable.HashMap[UUID, ActorRef] = {
     val actor = context.system.actorOf(props)
-    sender ! ActorCreated(actor)
+    sender ! ActorManager.ActorCreated(actor)
     robotsUUIDMap + ((UUID.fromString(createReq.clientId), actor))
   }
 
@@ -101,7 +102,7 @@ class RemoteActorCreator extends Actor {
       val props = createActorProps(createReq)
       robotsUUIDMap = createActor(createReq, props)
     } catch {
-      case e: Exception => sender ! NonexistentActorType
+      case e: Exception => sender ! ActorManager.NonexistentActorType
     }
   }
 
@@ -115,8 +116,8 @@ class RemoteActorCreator extends Actor {
       logger.info("Terminating system..." + context.system.toString)
       context.system.shutdown()
     }
-    case Reconnect  => connectToRootSystem()
+    case HeartBleed.Reconnect  => connectToRootSystem()
     case DeleteMe   => robotsUUIDMap = deleteActor(sender())
-    case TellYourIP => sender ! MyIPIs(address)
+    case TellYourIP => sender ! RemoteSystemManager.MyIPIs(address)
   }
 }

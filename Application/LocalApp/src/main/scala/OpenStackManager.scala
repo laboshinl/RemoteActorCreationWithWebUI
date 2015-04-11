@@ -6,12 +6,14 @@ import org.openstack4j.model.compute.Server
 import org.openstack4j.openstack.OSFactory
 
 import core.messages._
+import core.messages.OpenStackManager._
 
 /**
  * Created by mentall on 18.02.15.
  */
 
-class OpenStackManager extends Actor {
+class OpenStackManager extends Actor
+{
   val config = ConfigFactory.load()
   val logger = Logging.getLogger(context.system, self)
   val os : OSClient = OSFactory.builder()
@@ -30,7 +32,7 @@ class OpenStackManager extends Actor {
     val svr = os.compute().servers().boot(buildVMConfiguration(vmId))
     Servers += ((vmId, svr))
     logger.info("Open Stack Machine started...")
-    sender ! TaskCompletedWithId(vmId)
+    sender ! TaskManager.MachineStarted(vmId)
   }
 
   def terminateMachine(vmId: MachineTermination): Unit = {
@@ -39,7 +41,7 @@ class OpenStackManager extends Actor {
       os.compute().servers().delete(Servers(vmId.vmId).getId)
       Servers -= vmId.vmId
       logger.info("Open Stack Machine terminated...")
-      sender ! TaskCompletedWithId(vmId.vmId)
+      sender ! TaskManager.MachineTerminated(vmId.vmId)
     }
   }
   override def receive = {

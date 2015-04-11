@@ -2,7 +2,7 @@ package core.heartbleed
 
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.remote.{DisassociatedEvent, RemotingLifecycleEvent}
-import core.messages.Reconnect
+import core.messages.HeartBleed._
 
 /**
  * Created by baka on 05.04.15.

@@ -12,6 +12,7 @@ import akka.pattern.ask
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
+import core.messages.RoutingInfo._
 import core.messages._
 
 /**
@@ -35,9 +36,9 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
       logger.info("Trying to connect...")
       remote = context.actorSelection(ConfigFactory.load().getString("my.own.root-system-address") +
         ConfigFactory.load().getString("my.own.master-name"))
-      val connection = remote ? Ping
+      val connection = remote ? General.Ping
       Await.result(connection, timeout.duration)
-      remote ! RouterConnectionRequest(myUUID, routingPairs)
+      remote ! RouterManager.RouterConnectionRequest(myUUID, routingPairs)
       logger.info("Connected...!")
     } catch {
       case e: Exception => logger.info("Retrying...");
@@ -86,6 +87,7 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
       routingPairs.remove(clientUUID)
       routingPairs.remove(robotUUID)
     }
+    sender() ! General.OK
   }
 
   def replyUserPublisherConnectionString(msg : GetMessage) : Unit = {
@@ -96,9 +98,10 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
   }
 
   def associateUsers(msg : AddPair) : Unit = {
-    routingPairs += ((msg.clientId, msg.actorId))
-    routingPairs += ((msg.actorId, msg.clientId))
-    logger.debug("Paired: {}", (msg.actorId, msg.clientId))
+    routingPairs += ((msg.clientUUID, msg.actorUUID))
+    routingPairs += ((msg.actorUUID, msg.clientUUID))
+    logger.debug("Paired: {}", (msg.actorUUID, msg.clientUUID))
+    sender() ! General.OK
   }
 
   def replySendString() : Unit = {
@@ -118,7 +121,7 @@ class RoutingInfoActor(val address : String, val port : String) extends Actor {
     case msg : GetMessage       => replyUserPublisherConnectionString(msg)
     case msg : DeleteClient     => deleteUser(msg)
     case GetSendString          => replySendString()
-    case Reconnect              => connectToRootSystem()
+    case HeartBleed.Reconnect   => connectToRootSystem()
     case msg : String           => logger.debug("Received string: {}", msg); sender ! msg
     case aNonMsg                => logger.error("Some problems on ReceiverActor on address: " + address + ":" + port + " Msg: " + aNonMsg.toString)
   }

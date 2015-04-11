@@ -8,6 +8,8 @@ import org.json4s.native.Serialization
 import scala.collection.immutable
 
 import core.messages._
+import core.messages.Robot._
+
 /**
  * Created by mentall on 13.02.15.
  */
@@ -21,7 +23,7 @@ abstract class RobotActor(id: String, subString: String, sendString: String, mas
   override def postStop(): Unit = {
     subSocket ! PoisonPill
     sendSocket ! PoisonPill
-    master ! DeleteMe
+    master ! RemoteActor.DeleteMe
   }
 }
 
@@ -47,7 +49,7 @@ class ParrotActor(id: String, subString: String, sendString: String, master: Act
       logger.debug("Received akka msg: " + msg)
       sender ! msg + msg + msg + "!"
     }
-    case CheckAddress => sender	! AddressIsOk
+    case General.Ping => sender()	! General.Pong
     case rc : RemoteCommand => println("got command: "+ rc.command)
   }
 }
@@ -63,6 +65,6 @@ class CommandProxyActor(id: String, subString: String, sendString: String, maste
 
   override def receive: Receive = {
     case rc : RemoteCommand => sendSocket ! comandToZMessage(rc)
-    case CheckAddress => sender	! AddressIsOk
+    case General.Ping => sender()	! General.Pong
   }
 }

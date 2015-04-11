@@ -5,32 +5,33 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import akka.pattern.ask
 import core.messages._
+import core.messages.Controller._
 
 /**
  * Created by mentall on 15.03.15.
  */
 class Controller(val actorManager     : ActorRef,
                  val openStackManager : ActorRef,
-                 val taskManager      : ActorRef)
-  extends Actor
+                 val taskManager      : ActorRef) extends Actor
 {
 
   implicit val timeout: Timeout = 2 second
   val logger = Logging.getLogger(context.system, this)
 
   override def receive: Receive = {
-    case PlanActorCreation(actorType)     => planAction(actorManager     ? ActorCreation (actorType))
-    case PlanActorTermination(actorId)    => planAction(actorManager     ? ActorTermination(actorId))
-    case PlanMachineStart                 => planAction(openStackManager ? MachineStart)
-    case PlanMachineTermination(vmId)     => planAction(openStackManager ? MachineTermination(vmId))
-    case ActorIdAndMessageToJson(id, msg) => sender ! Await.result(actorManager ? SendMessageToActor(id, msg), timeout.duration)
-    case command: RemoteCommand           => actorManager ! command
+    case PlanActorCreation(actorType)     => planAction(actorManager     ? ActorManager.ActorCreation(actorType))
+    case PlanActorTermination(actorId)    => planAction(actorManager     ? ActorManager.ActorTermination(actorId))
+    case PlanMachineStart                 => planAction(openStackManager ? OpenStackManager.MachineStart)
+    case PlanMachineTermination(vmId)     => planAction(openStackManager ? OpenStackManager.MachineTermination(vmId))
+    case ActorIdAndMessageToJson(id, msg) => sender() ! Await.result(actorManager ? ActorManager.SendMessageToActor(id, msg), timeout.duration)
+    case RemoteCommand(uid, com, arg)     => actorManager ! ActorManager.RemoteCommand(uid, com, arg)
   }
 
   def planAction(task : Future[Any]) = {
-    val result = Await.result(taskManager ? ManageTask(task), timeout.duration)
-    if (!result.isInstanceOf[String]) logger.error("result of ManageTask is not an id : String")
-    sender ! result
+    Await.result(taskManager ? TaskManager.ManageTask(task), timeout.duration) match {
+      case TaskCreated(id)  => sender() ! WebUi.TaskCreated(id)
+      case msg              => sender() ! General.FAIL("Strange result")
+    }
   }
 
 }

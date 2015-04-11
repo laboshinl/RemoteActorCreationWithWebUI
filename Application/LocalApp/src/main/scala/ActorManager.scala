@@ -8,8 +8,8 @@ import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.Await
-
-import core.messages._;
+import core.messages.ActorManager._
+import core.messages._
 
 /**
  * Created by mentall on 15.03.15.
@@ -18,7 +18,9 @@ import core.messages._;
  * Этот актор ответственен за создание и взаимодействие с акторами удаленной системы.
  * Он содержит таблицу соответствия идентификатора адресу актора (uuid, actorref).
  */
-class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor with DisassociateSystem {
+class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorRef) extends Actor
+  with DisassociateSystem
+{
   implicit val timeout: Timeout = 5 second
   var logger = Logging.getLogger(context.system, self)
   var idToActor = new mutable.HashMap[UUID, ActorRef]
@@ -31,7 +33,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     super.preStart()
-    remoteSystemManager ! ActorManagerStarted
+    remoteSystemManager ! RemoteSystemManager.ActorManagerStarted
   }
 
   override def receive: Receive = {
@@ -40,7 +42,7 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     case SendMessageToActor(id, msg)      => sendMessageToRemoteActor(id, msg)
     case rc: RemoteCommand                => sendCommandToRemoteActor(rc)
     case event: DisassociatedEvent        => idToActor = disassociateSystem(idToActor, event)
-    case req: RemoteConnectionRequest     => updateOnRSConnect(req)
+    case req: UpdateActors                => updateOnRSConnect(req)
   }
 
   /**
@@ -48,11 +50,11 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
    * после того как она поднялась. Добавляем всех акторов из Remote System
    * если их нет в списке.
    */
-  def updateOnRSConnect(req: RemoteConnectionRequest): Unit = {
+  def updateOnRSConnect(req: UpdateActors): Unit = {
     req.robotsUUIDMap.foreach{
       tuple =>
         if (!idToActor.contains(tuple._1))
-          idToActor += (tuple)
+          idToActor += tuple
     }
   }
 
@@ -63,15 +65,15 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
       if (res.isInstanceOf[String]) sender ! res.toString
       else logger.debug("Actor's response in not string"); sender ! "Actor's response in not string"
     }
-    else sender ! NoSuchId
+    else sender ! General.FAIL("NoSuchId")
   }
 
   def sendCommandToRemoteActor(command: RemoteCommand) = {
     val id = UUID.fromString(command.clientUID)
     if (idToActor.contains(id)) {
-      idToActor(id) ! command
+      idToActor(id) ! Robot.RemoteCommand(command.command, command.args)
     }
-    else sender ! NoSuchId
+    else sender ! General.FAIL("NoSuchId")
   }
 
   /**
@@ -83,33 +85,38 @@ class ActorManager(val routerManager: ActorRef, val remoteSystemManager : ActorR
     if (idToActor.contains(id)){
       idToActor(id) ! PoisonPill
       idToActor -= id
-      routerManager ! DeleteClient(id)
-      sender ! TaskResponse("Success", stringUUID)
+      Await.result(routerManager ? RouterManager.DeleteClient(id), timeout.duration)
+      logger.debug("Actor deleted")
+      sender ! TaskManager.ActorDeleted(stringUUID)
     }
-    else sender ! TaskResponse("Error", "NoSuchId")
+    else sender ! General.FAIL("NoSuchId")
   }
 
   def createRemoteActor (actorType : String) = {
     val actorId  = UUID.randomUUID
     val clientId = UUID.randomUUID
     logger.debug("Create Actor for client: " + clientId.toString)
-    Await.result((routerManager ? RegisterPair(clientId, actorId)), timeout.duration) match {
+    Await.result(routerManager ? RouterManager.RegisterPair(clientId, actorId), timeout.duration) match {
       case res : PairRegistered =>
         logger.debug("Pair registered on Router")
-        Await.result(remoteSystemManager ? CreateNewActor(actorType, actorId.toString,
+        Await.result(remoteSystemManager ? RemoteSystemManager.CreateActor(actorType, actorId.toString,
             clientId.toString, res.actorSubStr, res.sendString), timeout.duration) match {
           case createRes : ActorCreated =>
             logger.debug("Actor created!")
-            idToActor += ((clientId, createRes.asInstanceOf[ActorCreated].adr))
-            sender ! ActorCreationSuccess("Success", clientId.toString, res.clientSubStr, res.sendString)
+            idToActor += ((clientId, createRes.adr))
+            sender ! TaskManager.ActorCreationSuccess(clientId.toString, res.clientSubStr, res.sendString)
           case NonexistentActorType =>
             logger.error("Error: Wrong Actor Type")
-            routerManager ! UnregisterPair(clientId, actorId)
-            sender ! TaskResponse("Error", "Wrong Actor Type")
+            Await.result(routerManager ? RouterManager.UnregisterPair(clientId, actorId), timeout.duration)
+            sender ! General.FAIL("Wrong Actor Type")
+          case NoRemoteSystems =>
+            logger.error("Error: Wrong Actor Type")
+            Await.result(routerManager ? RouterManager.UnregisterPair(clientId, actorId), timeout.duration)
+            sender ! General.FAIL("Wrong Actor Type")
         }
       case NoRouters =>
         logger.error("Error: No Routers")
-        sender ! TaskResponse("Error", "Wrong Actor Type")
+        sender ! General.FAIL("Wrong Actor Type")
     }
   }
 }

@@ -9,6 +9,7 @@ import scala.collection.mutable
 import scala.concurrent.Await
 import akka.pattern.ask
 
+import core.messages.RouterManager._
 import core.messages._
 
 /**
@@ -56,10 +57,10 @@ class RouterManager extends Actor with DisassociateSystem {
    */
 
   def registerPairOnRemoteRouter(router: ActorRef, pair: RegisterPair): (String, String, String) = {
-    val clientStr     = Await.result((router ? SetMessage(pair.actorId)), timeout.duration).asInstanceOf[String]
-    val actorStr      = Await.result((router ? SetMessage(pair.clientId)), timeout.duration).asInstanceOf[String]
-    val connectString = Await.result((router ? GetSendString), timeout.duration).asInstanceOf[String]
-    router ! AddPair(pair.clientId, pair.actorId)
+    val clientStr     = Await.result(router ? RoutingInfo.SetMessage(pair.actorUUID), timeout.duration).asInstanceOf[String]
+    val actorStr      = Await.result(router ? RoutingInfo.SetMessage(pair.clientUUID), timeout.duration).asInstanceOf[String]
+    val connectString = Await.result(router ? RoutingInfo.GetSendString, timeout.duration).asInstanceOf[String]
+    Await.result(router ? RoutingInfo.AddPair(pair.clientUUID, pair.actorUUID), timeout.duration)
     (clientStr, actorStr, connectString)
   }
 
@@ -100,7 +101,7 @@ class RouterManager extends Actor with DisassociateSystem {
    */
 
   def registerPair(sender: ActorRef, pair: RegisterPair) = {
-    logger.debug("Registering pair : {}, {}", pair.clientId, pair.actorId)
+    logger.debug("Registering pair : {}, {}", pair.clientUUID, pair.actorUUID)
     if (usersAmountOnRouter.size > 0) {
       //get router with minimum users
       val (usersAmount, router) = usersAmountOnRouter.remove(0)
@@ -109,36 +110,38 @@ class RouterManager extends Actor with DisassociateSystem {
       usersAmountOnRouter = updateUsersAmountOnRouter(usersAmount, router)
       //register new id's on router
       val (clientStr, actorStr, connectString) = registerPairOnRemoteRouter(router, pair)
-      clientOfRouter += ((pair.clientId, router))
-      clientOfRouter += ((pair.actorId, router))
+      clientOfRouter += ((pair.clientUUID, router))
+      clientOfRouter += ((pair.actorUUID, router))
       //возвращаем зарегистрированные адреса тому кто попросил регистрацию
       logger.debug("Pair registered: (clientStr: {}, actorStr: {}, sendStr: {}) \n Routers load: {}",
                    clientStr, actorStr, connectString, usersAmountOnRouter)
-      sender ! PairRegistered(clientStr, actorStr, connectString)
+      sender ! ActorManager.PairRegistered(clientStr, actorStr, connectString)
     } else {
       //если нет роутеров, то ничего не остаётся как послать клиента.
       logger.debug("No Routers connected")
-      sender ! NoRouters
+      sender ! ActorManager.NoRouters
     }
   }
 
   def unregisterPair(unregisterPair: UnregisterPair): Unit = {
-    deleteClient(DeleteClient(unregisterPair.actorId))
-    deleteClient(DeleteClient(unregisterPair.clientId))
+    deleteClient(DeleteClient(unregisterPair.actorUUID))
+    deleteClient(DeleteClient(unregisterPair.clientUUID))
+    sender() ! General.OK
   }
 
   def deleteClient(msg : DeleteClient) = {
     if (clientOfRouter.contains(msg.clientUUID)) {
       val router = clientOfRouter(msg.clientUUID)
-      router ! msg
+      Await.result(router ? RoutingInfo.DeleteClient(msg.clientUUID), timeout.duration)
       clientOfRouter -= msg.clientUUID
-      for (i <- 0 to usersAmountOnRouter.size) {
-        if(usersAmountOnRouter(i)._2 == router) {
+      for (i <- 0 to usersAmountOnRouter.size - 1) {
+        if (usersAmountOnRouter(i)._2 == router) {
           val tuple = usersAmountOnRouter(i)
           usersAmountOnRouter(i) = (tuple._1 - 1, tuple._2)
         }
       }
     }
+    sender() ! General.OK
   }
 
   def updateOnDisassociateEvent(event: DisassociatedEvent): Unit = {
@@ -153,7 +156,7 @@ class RouterManager extends Actor with DisassociateSystem {
     case pair: UnregisterPair         => unregisterPair(pair)
     case msg : DeleteClient           => deleteClient(msg)
     case event: DisassociatedEvent    => updateOnDisassociateEvent(event)
-    case Ping                         => sender() ! Pong
+    case General.Ping                 => sender() ! General.Pong
     case msg                          => logger.debug("Unknown Message: {}", msg)
   }
 }

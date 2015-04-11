@@ -15,12 +15,10 @@ import spray.http._
 import MediaTypes._
 import language.postfixOps
 
+import core.messages.WebUi._
 import core.messages._
-
 /**
  * это говно не поддаётся рефакторингу и моему осознанию. Я не знаю что с этим делать.
- * @param controller
- * @param taskManager
  */
 
 class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
@@ -73,39 +71,39 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   }
 
   def planActorOnRemoteMachine (actorType : ActorTypeToJson) : ToResponseMarshallable = {
-    Await.result(controller ? PlanActorCreation(actorType.actorType), timeout.duration)match {
-      case id : String  => Map("Status" -> "Success", "TaskId" -> id)
-      case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
+    Await.result(controller ? Controller.PlanActorCreation(actorType.actorType), timeout.duration)match {
+      case TaskCreated(id)  => Map("Status" -> "Success", "TaskId" -> id)
+      case _                => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def planActorDeletion(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(controller ? PlanActorTermination(ar.Id), timeout.duration)match {
-      case id : String  => Map("Status" -> "Success", "TaskId" -> id)
-      case _            => Map("Status" -> "Error",   "Reason" -> "Unknown error")
+    Await.result(controller ? Controller.PlanActorTermination(ar.Id), timeout.duration)match {
+      case TaskCreated(id)  => Map("Status" -> "Success", "TaskId" -> id)
+      case _                => Map("Status" -> "Error",   "Reason" -> "Unknown error")
     }
   }
 
   def sendMessageToActorOnRemoteMachine(ar: ActorIdAndMessageToJson): ToResponseMarshallable = {
-    Await.result(controller ? ar, timeout.duration) match {
-      case msg : String  => HttpResponse(entity = HttpEntity(`text/html`, msg))
-      case NoSuchId      => HttpResponse(entity = HttpEntity(`text/html`, "There is no actor with such id"))
-      case _             => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+    Await.result(controller ? Controller.ActorIdAndMessageToJson(ar.id, ar.msg), timeout.duration) match {
+      case msg: String          => HttpResponse(entity = HttpEntity(`text/html`, msg))
+      case General.FAIL(reason) => HttpResponse(entity = HttpEntity(`text/html`, reason))
+      case _                    => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
   def planMachineDeletion(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(controller ? PlanMachineTermination(ar.Id), timeout.duration) match {
-      case id : String  => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
-      case NoSuchId     => HttpResponse(entity = HttpEntity(`text/html`, "There is no vm with such id"))
-      case _            => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+    Await.result(controller ? Controller.PlanMachineTermination(ar.Id), timeout.duration) match {
+      case TaskCreated(id)      => HttpResponse(entity = HttpEntity(`text/html`, "Machine termination is planned: " + id))
+      case General.FAIL(reason) => HttpResponse(entity = HttpEntity(`text/html`, reason))
+      case _                    => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
   def planMachineCreation: ToResponseMarshallable = {
-    Await.result(controller ? PlanMachineStart, timeout.duration)match {
-      case id : Long  => HttpResponse(entity = HttpEntity(`text/html`,"Machine creation is planned: " + id))
-      case _          => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
+    Await.result(controller ? Controller.PlanMachineStart, timeout.duration) match {
+      case TaskCreated(id)      => HttpResponse(entity = HttpEntity(`text/html`, "Machine creation is planned: " + id))
+      case _                    => HttpResponse(entity = HttpEntity(`text/html`, "Unknown error"))
     }
   }
 
@@ -113,21 +111,22 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
     println(rc.clientUID)
     println(rc.command)
-    controller ! rc
-    HttpResponse(entity = HttpEntity(`text/html`, "ok"))
+    controller ! Controller.RemoteCommand(rc.clientUID, rc.command, rc.args)
+    HttpResponse(entity = HttpEntity(`text/html`, "Casted"))
   }
 
-  def getTaskStatus(ar: IdToJson): ToResponseMarshallable = {
-    Await.result(taskManager ? TaskStatus(ar.Id), timeout.duration) match{
-      case TaskCompleted           => TaskResponse("Success", "")
-      case TaskCompletedWithId(id) => TaskResponse("Success", id.toString)
-      case TaskIncomplete          => TaskResponse("Incomplete", "")
-      case TaskFailed              => TaskResponse("Error", "Task failed")
-      case NoSuchId                => TaskResponse("Error", "No such Id")
-      case result: ActorCreationSuccess  => result
-      case result: TaskResponse    => result
-      case msg: String             => TaskResponse("Error", msg)
-      case _                       => TaskResponse("Error", "Unknown error")
-    }
+  def getTaskStatus(ar: IdToJson): ToResponseMarshallable = Await.result(taskManager ? TaskManager.TaskStatus(ar.Id), timeout.duration) match{
+    case MachineTerminated(vmId)        => Map("Status" -> "Success", "vmId" -> vmId)
+    case ActorDeleted(uid)              => Map("Status" -> "Success", "UUID" -> uid)
+    case TaskIncomplete                 => Map("Status" -> "Incomplete")
+    case result: ActorCreationSuccess   => Map(
+      "Status" -> "Success",
+      "clientUID" -> result.clientId,
+      "subString" -> result.clientSubStr,
+      "sendString" -> result.sendString
+    )
+    case msg: String                    => Map("Status" -> "Error", "reason" -> msg)
+    case General.FAIL(reason)           => Map("Status" -> "Error", "reason" -> reason)
+    case _                              => Map("Status" -> "Error", "reason" -> "Unknown error")
   }
 }
