@@ -18,10 +18,12 @@ import akka.pattern.ask
  * Created by mentall on 12.02.15.
  */
 
+//TODO: implement actordelete here!
+
 /**
  * This class is a broker of messages from webui to remote actor in actor system in VM
  */
-class RemoteSystemManager() extends Actor
+class RemoteSystemManager(val OSManager: ActorRef) extends Actor
   with DisassociateSystem
 {
   implicit val timeout: Timeout = 2 seconds
@@ -29,14 +31,8 @@ class RemoteSystemManager() extends Actor
   var actorManager: ActorRef = null
   val logger = Logging.getLogger(context.system, self)
   var remoteSystems = new mutable.HashMap[UUID, ActorRef]
+  var idToAmount = new mutable.HashMap[ActorRef, Int]
   logger.info("Remoter started")
-
-  def remote : ActorRef = {
-    val r = scala.util.Random.nextInt(remoteSystems.size)
-    logger.debug("I have " + remoteSystems.size + " remote system and i choose " + r + " to send a message")
-    val uUID = remoteSystems.keySet.toArray.apply(r)
-    remoteSystems(uUID)
-  }
 
   def onRemoteSystemConnection(request: RemoteConnectionRequest): Unit = {
     if (actorManager != null) {
@@ -48,24 +44,9 @@ class RemoteSystemManager() extends Actor
     }
   }
 
-  def createNewActor(msg: CreateActor): Unit = {
-    logger.debug("Got request on creation")
-    if(remoteSystems.isEmpty) {
-      logger.debug("Empty remoteSystemsList")
-      sender() ! ActorManager.NoRemoteSystems
-    }
-    Await.result(remote ? RemoteActor.CreateNewActor(msg.actorType,
-      msg.actorId, msg.clientId, msg.subString, msg.sendString), timeout.duration) match {
-      case ActorCreated(adr) =>
-        try {
-          Await.result(adr ? General.Ping, timeout.duration)
-          sender() ! ActorManager.ActorCreated(adr)
-        } catch {
-          case e: Exception => sender() ! General.FAIL("Pong not received")
-        }
-      case NonexistentActorType => sender() ! ActorManager.NonexistentActorType
-    }
-  }
+  def createNewActor(msg: CreateActor): Unit =
+    RandomSystemPolicy.createNewActor(remoteSystems, logger, sender(), timeout, msg, OSManager, idToAmount)
+
 
   override def receive: Receive = {
     case msg: CreateActor                 => createNewActor(msg)
@@ -81,5 +62,59 @@ class RemoteSystemManager() extends Actor
     case MyIPIs(ip)                       => logger.debug(ip)
     case ActorManagerStarted              => actorManager = sender()
     case General.Ping                     => sender ! General.Pong
+  }
+}
+
+
+trait AbstractPolicy {
+  def chooseRemoteSystem(rs : mutable.HashMap[UUID, ActorRef]) : ActorRef
+  def createNewActor(rs: mutable.HashMap[UUID, ActorRef], logger : akka.event.LoggingAdapter,
+                     sender : ActorRef, timeout: Timeout, msg: CreateActor, OSManager : ActorRef,
+                     idToAmount : mutable.HashMap[ActorRef, Int]): Unit
+  def deleteActor(rs : mutable.HashMap[UUID, ActorRef]) : Unit
+  def updateAmountMapAndStartSystems(idToAmount : mutable.HashMap[ActorRef, Int], rms : ActorRef, OSManager : ActorRef): Unit
+  
+  protected val maxActorsAmountOnSystem : Int = 10
+}
+
+object RandomSystemPolicy extends AbstractPolicy{
+  override def createNewActor(rs: mutable.HashMap[UUID, ActorRef], logger : akka.event.LoggingAdapter,
+                               sender : ActorRef, timeout: Timeout, msg: CreateActor, OSManager : ActorRef,
+                               idToAmount : mutable.HashMap[ActorRef, Int]): Unit = {
+    logger.debug("Got request on creation")
+    if (rs.isEmpty) {
+      logger.debug("Empty remoteSystemsList creating new VM")
+      Await.result(OSManager ? OpenStackManager.MachineStart, timeout.duration)
+    }
+    val rms = chooseRemoteSystem(rs)
+    Await.result(rms ? RemoteActor.CreateNewActor(msg.actorType,
+      msg.actorId, msg.clientId, msg.subString, msg.sendString), timeout.duration) match {
+      case ActorCreated(adr) =>
+        try {
+          Await.result(adr ? General.Ping, timeout.duration)
+          sender ! ActorManager.ActorCreated(adr)
+          //запуск доп. систем
+          updateAmountMapAndStartSystems(idToAmount, rms, OSManager)
+        } catch {
+          case e: Exception => sender ! General.FAIL("Pong not received")
+        }
+      case NonexistentActorType => sender ! ActorManager.NonexistentActorType
+    }
+  }
+
+  override def chooseRemoteSystem(rs : mutable.HashMap[UUID, ActorRef]) : ActorRef = {
+      val r = scala.util.Random.nextInt(rs.size)
+      val uUID = rs.keySet.toArray.apply(r)
+      rs(uUID)
+    }
+
+  override def deleteActor(rs: mutable.HashMap[UUID, ActorRef]): Unit = ???
+
+  override def updateAmountMapAndStartSystems(idToAmount: mutable.HashMap[ActorRef, Int], rms : ActorRef, OSManager : ActorRef): Unit = {
+    if(idToAmount.contains(rms)) {
+      idToAmount += ((rms, idToAmount(rms)+1))
+      if (idToAmount(rms) > maxActorsAmountOnSystem) OSManager ! OpenStackManager.MachineStart
+    }
+    else idToAmount += ((rms, 1))
   }
 }

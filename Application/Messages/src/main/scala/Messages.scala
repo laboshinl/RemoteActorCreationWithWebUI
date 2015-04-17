@@ -75,7 +75,7 @@ object RemoteSystemManager {
   case class ActorCreatedReply(actorRef: ActorRef) extends Serializable
   @SerialVersionUID(34L)
   case object NonexistentActorType extends Serializable
-  @SerialVersionUID(34L)
+  @SerialVersionUID(343L)
   case object ActorManagerStarted extends Serializable
 }
 

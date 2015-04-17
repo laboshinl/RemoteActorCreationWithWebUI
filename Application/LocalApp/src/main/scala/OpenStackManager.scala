@@ -1,4 +1,4 @@
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import akka.event.Logging
 import com.typesafe.config.ConfigFactory
 import org.openstack4j.api.{Builders, OSClient}
