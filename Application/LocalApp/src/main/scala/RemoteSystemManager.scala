@@ -45,7 +45,7 @@ class RemoteSystemManager(val OSManager: ActorRef) extends Actor
   }
 
   def createNewActor(msg: CreateActor): Unit =
-    RandomSystemPolicy.createNewActor(remoteSystems, logger, sender(), timeout, msg, OSManager, idToAmount)
+    RandomSystemPolicy.createNewActor(remoteSystems, logger, sender(), msg, OSManager, idToAmount)
 
 
   override def receive: Receive = {
@@ -67,9 +67,10 @@ class RemoteSystemManager(val OSManager: ActorRef) extends Actor
 
 
 trait AbstractPolicy {
+  implicit val timeout: Timeout = 2 seconds
   def chooseRemoteSystem(rs : mutable.HashMap[UUID, ActorRef]) : ActorRef
   def createNewActor(rs: mutable.HashMap[UUID, ActorRef], logger : akka.event.LoggingAdapter,
-                     sender : ActorRef, timeout: Timeout, msg: CreateActor, OSManager : ActorRef,
+                     sender : ActorRef, msg: CreateActor, OSManager : ActorRef,
                      idToAmount : mutable.HashMap[ActorRef, Int]): Unit
   def deleteActor(rs : mutable.HashMap[UUID, ActorRef]) : Unit
   def updateAmountMapAndStartSystems(idToAmount : mutable.HashMap[ActorRef, Int], rms : ActorRef, OSManager : ActorRef): Unit
@@ -79,7 +80,7 @@ trait AbstractPolicy {
 
 object RandomSystemPolicy extends AbstractPolicy{
   override def createNewActor(rs: mutable.HashMap[UUID, ActorRef], logger : akka.event.LoggingAdapter,
-                               sender : ActorRef, timeout: Timeout, msg: CreateActor, OSManager : ActorRef,
+                               sender : ActorRef, msg: CreateActor, OSManager : ActorRef,
                                idToAmount : mutable.HashMap[ActorRef, Int]): Unit = {
     logger.debug("Got request on creation")
     if (rs.isEmpty) {

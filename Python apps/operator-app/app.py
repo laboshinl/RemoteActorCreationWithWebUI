@@ -17,7 +17,7 @@ import requests
 class Example(QWidget):
     def __init__(self):
         super().__init__()
-        self.ip_edit    = QLineEdit('http://127.0.0.1:8080')
+        self.ip_edit    = QLineEdit('http://195.208.117.228:8080')
         self.uuid_edit  = QLineEdit()
         self.init_ui()
         

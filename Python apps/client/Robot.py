@@ -24,7 +24,7 @@ class Robot(object):
 
     def dispatch_command(self, json):
         print json
-        self.send_command(0, [4])
+        # self.send_command(0, [4])
 
     def send_command(self, command_code, command_args):
         first = '\x15'
@@ -39,7 +39,7 @@ class Robot(object):
         return self.clientApi.client_id
 
 def main():
-    robot = Robot('http://127.0.0.1:8080')
+    robot = Robot('http://195.208.117.228:8080')
 
 
 

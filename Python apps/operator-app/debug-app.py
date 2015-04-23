@@ -22,7 +22,7 @@ class Example(QWidget):
 
         mainLayout    = QGridLayout(self)
 
-        self.ipEdit    = QLineEdit('http://127.0.0.1:8080')
+        self.ipEdit    = QLineEdit('http://195.208.117.228:8080')
         ipTitle   = QLabel('IP:')
         mainLayout.addWidget(ipTitle      , 0, 0)
         mainLayout.addWidget(self.ipEdit  , 0, 1, 1, 5)

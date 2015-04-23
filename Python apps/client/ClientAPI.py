@@ -80,7 +80,7 @@ class ClientAPI(object):
         print 'Response: ', resp.json()["UUID"] == self.client_id
 
 def main():
-    client_api = ClientAPI('http://127.0.0.1:8080', 'ParrotActor')
+    client_api = ClientAPI('http://195.208.117.228:8080', 'ParrotActor')
     for i in range(1, 2):
         client_api.try_send('ololo %s' % str(i))
         client_api.try_recv()
