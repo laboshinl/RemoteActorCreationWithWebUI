@@ -50,7 +50,12 @@ class ParrotActor(id: String, subString: String, sendString: String, master: Act
       sender ! msg + msg + msg + "!"
     }
     case General.Ping => sender()	! General.Pong
-    case rc : RemoteCommand => println("got command: "+ rc.command)
+    case rc : RemoteCommand => println("got command: "+ rc.command); sendSocket ! comandToZMessage(rc)
+  }
+
+  def comandToZMessage(rc: RemoteCommand): ZMQMessage = {
+    val jsonString = pretty(render(Extraction.decompose(rc)))
+    ZMQMessage(immutable.Seq(ByteString(id + ".command"), ByteString(jsonString)))
   }
 }
 
