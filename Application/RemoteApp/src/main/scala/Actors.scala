@@ -53,6 +53,7 @@ class ParrotActor(id: String, subString: String, sendString: String, master: Act
     case rc : RemoteCommand => println("got command: "+ rc.command); sendSocket ! comandToZMessage(rc)
   }
 
+  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[Status])))
   def comandToZMessage(rc: RemoteCommand): ZMQMessage = {
     val jsonString = pretty(render(Extraction.decompose(rc)))
     ZMQMessage(immutable.Seq(ByteString(id + ".command"), ByteString(jsonString)))
