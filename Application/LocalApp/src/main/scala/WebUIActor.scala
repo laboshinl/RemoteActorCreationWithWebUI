@@ -30,6 +30,7 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
   implicit val timeout: Timeout = 2 second
   val json4sFormats = DefaultFormats
   override def receive = runRoute(route)
+  val uuidRegexp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
 
   //This is the tree of all working routes that answer to user's requests
   lazy val route = {
@@ -107,12 +108,15 @@ class WebUIActor(val controller : ActorRef, val taskManager : ActorRef)
     }
   }
 
-
+  //TODO: на лоб "переделать ремот команд"
   def sendRemoteCommandToActor(rc: RemoteCommand): ToResponseMarshallable = {
-    println(rc.clientUID)
-    println(rc.command)
-    controller ! Controller.RemoteCommand(rc.clientUID, rc.command, rc.args)
-    HttpResponse(entity = HttpEntity(`text/html`, "Casted"))
+    if (rc.clientUID.matches(uuidRegexp)){
+      println(rc.clientUID)
+      println(rc.command)
+      controller ! Controller.RemoteCommand(rc.clientUID, rc.command, rc.args)
+      HttpResponse(entity = HttpEntity(`text/html`, "Casted"))
+    }
+    else HttpResponse(entity = HttpEntity(`text/html`, "Incorrect uuid"))
   }
 
   def getTaskStatus(ar: IdToJson): ToResponseMarshallable = Await.result(taskManager ? TaskManager.TaskStatus(ar.Id), timeout.duration) match{
