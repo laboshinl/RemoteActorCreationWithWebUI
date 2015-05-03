@@ -7,7 +7,10 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QGridLayout,
  QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QLineEdit, QLabel)
+from PyQt5 import QtCore
+
 import json
+import time
 import requests
 
 # Денис, есть такая штука, как PEP-8. Позязя, позязя, позязя, юзай его, ну позязя...
@@ -17,7 +20,7 @@ import requests
 class Example(QWidget):
     def __init__(self):
         super().__init__()
-        self.ip_edit    = QLineEdit('http://127.0.0.1:8080')
+        self.ip_edit    = QLineEdit('http://192.168.1.6:8080')
         self.uuid_edit  = QLineEdit()
         self.init_ui()
         
@@ -47,14 +50,15 @@ class Example(QWidget):
         right_button.clicked.connect(self.button_clicked)
         self.show()
 
-    def send_command(self, command):
-        data = {'clientUID': self.uuid_edit.text(), 'command': command, 'args':[]}
+    def send_command(self, command, args):
+        data = {'clientUID': self.uuid_edit.text(), 'command': command, 'args': args}
         headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
         requests.post(self.ip_edit.text() + '/command', data=json.dumps(data), headers=headers)
 
     def button_clicked(self):
         sender = self.sender()
-        self.send_command(sender.text())
+        speed = 50
+        self.send_command(sender.text(), [speed])
 
     def close_event(self, event):
         reply = QMessageBox.question(self, 'Message',
@@ -70,7 +74,23 @@ class Example(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-        
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == QtCore.Qt.Key_W:
+            self.send_command("Forward", [50])
+        elif key == QtCore.Qt.Key_S:
+            self.send_command("Forward", [-50])
+        elif key == QtCore.Qt.Key_A:
+            self.send_command("Left", [50])
+        elif key == QtCore.Qt.Key_D:
+            self.send_command("Right", [50])
+        time.sleep(0.01)
+
+    def keyReleaseEvent(self, event):
+        key = event.key()
+        if key == QtCore.Qt.Key_W or key == QtCore.Qt.Key_S or key == QtCore.Qt.Key_A or key == QtCore.Qt.Key_D:
+            self.send_command("Forward", [0])
         
 if __name__ == '__main__':    
     app = QApplication(sys.argv)

@@ -30,6 +30,8 @@ object Boot extends App {
     timeout.duration).asInstanceOf[ActorRef]
 
   val config = ConfigFactory.load()
+  println(config.getString("my.own.spray-bind-ip"))
+  println(config.getString("my.own.spray-bind-port"))
   IO(Http) ! Http.Bind(
     web,
     interface = config.getString("my.own.spray-bind-ip"),
