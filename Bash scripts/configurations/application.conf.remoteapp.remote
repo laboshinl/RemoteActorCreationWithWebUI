@@ -1,0 +1,36 @@
+akka {
+  loglevel = "DEBUG"
+  actor {
+    provider = "akka.remote.RemoteActorRefProvider"
+  }
+  remote {
+    startup-timeout = 10 s
+    shutdown-timeout = 10 s
+    enabled-transports = ["akka.remote.netty.tcp"]
+    netty.tcp {
+      hostname = "10.178.147.109"
+      port = 0
+    }
+  }
+  
+  zeromq {
+
+    # The default timeout for a poll on the actual zeromq socket.
+    poll-timeout = 1ms
+
+    # Timeout for creating a new socket
+    new-socket-timeout = 10s
+
+    socket-dispatcher {
+      # A zeromq socket needs to be pinned to the thread that created it.
+      # Changing this value results in weird errors and race conditions within zeromq
+      executor = thread-pool-executor
+      type = "PinnedDispatcher"
+    }
+  }
+}
+
+my.own{
+  root-system-address = "akka.tcp://LocalSystem@10.178.147.108:11111"
+  master-name = "/user/supervisor/RemoteSystemManager"
+}
